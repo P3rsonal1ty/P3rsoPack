@@ -72,6 +72,8 @@ public final class PackGenerator {
         generateBlocks(defs, variations);
         for (ItemDef item : defs.items().values()) generateItem(item);
         generateEdgeArt(defs);
+        if (defs.guis().values().stream().anyMatch(g -> g.isEdge() && !g.edge().centered())) writeFocusOutlineShader();
+        writeTitlePanelShader(defs);
         Map<String, GlyphDef> glyphs = generateFonts(defs);
         writeInvisibleItem();
         checkTooltipStyles(defs);
@@ -405,6 +407,170 @@ public final class PackGenerator {
                 }
             }
         }
+    }
+
+    /**
+     * Меню у левого края экрана — текст шире экрана, и после клика клиент обводит его белой рамкой фокуса
+     * через весь экран. Шейдер core/gui (копия ванильного 26.3) сжимает белые линии, вылезающие за правый край
+     * экрана, в x = 8 (там начинается такой текст); левую линию закрывает фон меню. Обычные окна игры
+     * в экран помещаются и не затрагиваются.
+     */
+    private void writeFocusOutlineShader() {
+        String path = "assets/minecraft/shaders/core/gui.vsh";
+        if (userFiles.contains(path)) return;
+        String src = """
+                #version 330
+                #extension GL_ARB_separate_shader_objects : require
+
+                // Can't moj_import in things used during startup, when resource packs don't exist.
+                // This is a copy of dynamicimports.glsl and projection.glsl
+                layout(std140) uniform DynamicTransforms {
+                    mat4 ModelViewMat;
+                    mat4 TextureMat;
+                    vec4 ColorModulator;
+                    vec3 ModelOffset;
+                };
+                layout(std140) uniform Projection {
+                    mat4 ProjMat;
+                };
+
+                layout(location = 0) in vec3 Position;
+                layout(location = 1) in vec4 Color;
+
+                layout(location = 0) out vec4 vertexColor;
+
+                void main() {
+                    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+
+                    vertexColor = Color;
+
+                    // P3rsoPack: рамка фокуса вокруг текста меню шире экрана — сжать белые линии за правым краем в x = 8
+                    bool orthographic = ProjMat[3][3] == 1.0 && ProjMat[2][3] == 0.0;
+                    if (orthographic && Color == vec4(1.0) && gl_Position.x > 1.0) {
+                        gl_Position.x = 8.0 * ProjMat[0][0] - 1.0;
+                    }
+                }
+                """;
+        files.put(path, src.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Панели вкладок (в заголовке диалога) клиент рисует там, где их поставил заголовок, а сервер не знает размер
+     * экрана. Шейдер core/text (копия ванильного 26.3 + блок для GUI) находит куски панели по цвету-маркеру
+     * (254, 10 + номер меню, номер куска), ставит панель по центру экрана и увеличивает в целое число раз,
+     * насколько позволяет экран. Панель некликабельна, поэтому перенос безопасен.
+     */
+    private void writeTitlePanelShader(Definitions defs) {
+        List<ru.p3rso.pack.model.EdgeLayout> menus = new java.util.ArrayList<>();
+        for (var g : defs.guis().values()) if (g.isEdge() && g.edge().hasTitlePanels()) menus.add(g.edge());
+        if (menus.isEmpty()) return;
+        String path = "assets/minecraft/shaders/core/text.vsh";
+        if (userFiles.contains(path)) {
+            problems.warn("pack/" + path, 0, "свой text.vsh: панели меню со вкладками не будут центрироваться и увеличиваться");
+            return;
+        }
+        StringBuilder pw = new StringBuilder(), ph = new StringBuilder(), tw = new StringBuilder(), sh = new StringBuilder(),
+                asc = new StringBuilder(), tabs = new StringBuilder(), max = new StringBuilder();
+        for (int i = 0; i < menus.size(); i++) {
+            var e = menus.get(i);
+            var panel = e.tabs().stream().filter(t -> t.titlePanel() != null).findFirst().orElseThrow().titlePanel();
+            String sep = i == 0 ? "" : ", ";
+            pw.append(sep).append(panel.width()).append(".0");
+            ph.append(sep).append(panel.height()).append(".0");
+            tw.append(sep).append((panel.width() + panel.tiles() - 1) / panel.tiles()).append(".0");
+            sh.append(sep).append(e.titleShift()).append(".0");
+            GlyphDef g = defs.glyphs().get(panel.tileGlyph(0));
+            asc.append(sep).append(g == null ? -24 : g.ascent()).append(".0");
+            tabs.append(sep).append(e.width() + 18).append(".0");  // правый край столбца вкладок с фоном: 12 + ширина + 6
+            max.append(sep).append(e.contentScale()).append(".0");
+        }
+        int n = menus.size();
+        String src = """
+                #version 330
+                #extension GL_ARB_separate_shader_objects : require
+
+                #if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
+                #include <minecraft:fog.glsl>
+                #include <minecraft:sample_lightmap.glsl>
+                #endif
+
+                #include <minecraft:dynamictransforms.glsl>
+                #include <minecraft:projection.glsl>
+
+                layout(location = 0) in vec3 Position;
+                layout(location = 1) in vec4 Color;
+                layout(location = 2) in vec2 UV0;
+                #if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
+                layout(location = 3) in ivec2 UV2;
+                #endif
+
+                #if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
+                uniform sampler2D Sampler2;
+                layout(location = 0) out float sphericalVertexDistance;
+                layout(location = 1) out float cylindricalVertexDistance;
+                #endif
+
+                layout(location = 2) out vec4 vertexColor;
+                layout(location = 3) out vec2 texCoord0;
+
+                #ifdef IS_GUI
+                // P3rsoPack: размеры панелей меню со вкладками (по номеру меню)
+                const int MENUS = %N%;
+                const float PANEL_W[MENUS] = float[](%PW%);
+                const float PANEL_H[MENUS] = float[](%PH%);
+                const float TILE_W[MENUS] = float[](%TW%);
+                const float SHIFT[MENUS] = float[](%SH%);
+                const float ASCENT[MENUS] = float[](%ASC%);
+                const float TABS_RIGHT[MENUS] = float[](%TABS%);
+                const float MAX_SCALE[MENUS] = float[](%MAX%);
+                #endif
+
+                void main() {
+                    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+
+                #if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
+                    sphericalVertexDistance = fog_spherical_distance(Position);
+                    cylindricalVertexDistance = fog_cylindrical_distance(Position);
+                    vertexColor = Color * sample_lightmap(Sampler2, UV2);
+                #else
+                    vertexColor = Color;
+                #endif
+
+                #ifdef IS_GUI
+                    ivec3 marker = ivec3(round(Color.rgb * 255.0));
+                    int menu = marker.g - 10;
+                    if (marker.r == 254 && menu >= 0 && menu < MENUS) {
+                        float sw = 2.0 / ProjMat[0][0];          // ширина экрана в пикселях интерфейса
+                        float shh = -2.0 / ProjMat[1][1];        // высота
+                        vec4 pos = ModelViewMat * vec4(Position, 1.0);
+                        float pw = PANEL_W[menu], ph = PANEL_H[menu], tw = TILE_W[menu];
+                        float tile = float(marker.b);
+                        float tileX = tile * tw;
+                        float tileW = min(tw, pw - tileX);
+                        // где панель стоит без шейдера: заголовок по центру экрана, сверху шапка 33 px
+                        float titleW = SHIFT[menu] + pw + 1.0;
+                        float left0 = floor((sw - titleW) * 0.5) + SHIFT[menu];
+                        float top0 = 12.0 + 7.0 - ASCENT[menu];
+                        bool right = pos.x - left0 > tileX + tileW * 0.5;
+                        bool bottom = pos.y - top0 > ph * 0.5;
+                        // увеличение: целое, чтобы пиксели оставались ровными; панель не выше экрана без шапки и кнопок
+                        float scale = floor(min((shh - 80.0) / ph, (sw - TABS_RIGHT[menu] - 16.0) / pw));
+                        scale = clamp(scale, 1.0, MAX_SCALE[menu]);
+                        float cx = max(sw * 0.5, TABS_RIGHT[menu] + 8.0 + pw * scale * 0.5);
+                        float cy = shh * 0.5;
+                        pos.x = cx - pw * scale * 0.5 + (tileX + (right ? tileW : 0.0)) * scale;
+                        pos.y = cy - ph * scale * 0.5 + (bottom ? ph * scale : 0.0);
+                        gl_Position = ProjMat * pos;
+                        vertexColor = vec4(1.0, 1.0, 1.0, Color.a);
+                    }
+                #endif
+
+                    texCoord0 = UV0;
+                }
+                """
+                .replace("%N%", String.valueOf(n)).replace("%PW%", pw).replace("%PH%", ph).replace("%TW%", tw)
+                .replace("%SH%", sh).replace("%ASC%", asc).replace("%TABS%", tabs).replace("%MAX%", max);
+        files.put(path, src.getBytes(StandardCharsets.UTF_8));
     }
 
     private static byte[] png(java.awt.image.BufferedImage img) {

@@ -42,7 +42,8 @@ public final class DefinitionLoader {
     static final Set<String> GUI_KEYS = Set.of("title", "rows", "background", "background-offset", "title-offset", "items", "open-actions",
             "command", "permission", "hide-player-inventory", "buttons", "type");
     static final Set<String> EDGE_KEYS = Set.of("type", "command", "permission", "width", "height", "background",
-            "close-button", "elements", "tabs", "tab-width", "position", "logo");
+            "close-button", "elements", "tabs", "tab-width", "position", "logo", "content-width", "content-height",
+            "content-offset", "content-shift", "content-scale");
     static final Set<String> EDGE_TAB_KEYS = Set.of("label", "icon", "style", "color", "name", "lore", "content", "buttons", "actions");
     static final Set<String> EDGE_CONTENT_KEYS = Set.of("label", "subtitle", "text", "icon", "icon-scale", "style", "color");
     static final Set<String> EDGE_BUTTON_KEYS = Set.of("label", "tooltip", "width", "style", "color", "icon", "actions", "name", "lore");
@@ -509,16 +510,21 @@ public final class DefinitionLoader {
     private GuiDef parseEdgeGui(String id, YNode n) {
         n.checkKeys(EDGE_KEYS, problems);
         String path = Ids.path(id), ns0 = Ids.namespace(id);
-        String position = n.string("position", n.has("tabs") ? "center" : "left").toLowerCase(Locale.ROOT);
+        String position = n.string("position", "left").toLowerCase(Locale.ROOT);
         if (!position.equals("center") && !position.equals("left")) throw n.require("position").error("position: center (окно по центру экрана) или left (у левого края)");
         boolean centered = position.equals("center");
-        int width = n.integer("width", n.has("tabs") ? 460 : 252, 40, centered ? 470 : 900);
-        int height = n.integer("height", n.has("tabs") ? 180 : 196, 18, 400);
+        boolean tabsMode = n.has("tabs");
+        int width = n.integer("width", tabsMode ? (centered ? 460 : n.integer("tab-width", 112, 40, 200) + 16) : 252, 40, centered ? 470 : 900);
+        int height = n.integer("height", tabsMode ? 180 : 196, 18, 400);
         if (centered && width > 470) problems.warn(n.source(), "меню шире 470 px не поместится по центру при масштабе интерфейса 4");
         List<EdgeLayout.Element> els = new ArrayList<>();
         List<EdgeLayout.Element> extra = new ArrayList<>();
         List<EdgeLayout.Tab> tabs = new ArrayList<>();
-        if (n.has("tabs")) {
+        int titleShift = 0;
+        if (tabsMode && !centered) {
+            titleShift = parseEdgeTabs(ns0, path, n, els, extra, tabs);
+            height = 9 + 18 * tabs.size();
+        } else if (tabsMode) {
             parseTabs(ns0, path, n, width, height, els, extra, tabs);
         } else {
             YNode en = n.require("elements");
@@ -553,7 +559,86 @@ public final class DefinitionLoader {
         }
         return new GuiDef(id, n.source(), "", 1, null, 0, 0, List.of(), List.of(), guiCommand(id, n),
                 n.has("permission") ? n.reqString("permission").trim() : null, false,
-                new EdgeLayout(width, height, centered, bg, List.copyOf(els), n.bool("close-button", false), List.copyOf(tabs), List.copyOf(extra)));
+                new EdgeLayout(width, height, centered, bg, List.copyOf(els), n.bool("close-button", false), List.copyOf(tabs), List.copyOf(extra), titleShift,
+                        n.has("content-scale") && !n.reqString("content-scale").equalsIgnoreCase("auto") ? n.integer("content-scale", 4, 1, 6) : 4));
+    }
+
+    /**
+     * Вкладки у левого края экрана: столбец вкладок в теле диалога (текст шире экрана прижат к краю), панель
+     * выбранной вкладки — в заголовке диалога (клиент центрирует его по экрану; сдвиг content-shift смещает панель
+     * в свободную часть экрана справа от вкладок), кнопки — обычные кнопки диалога внизу.
+     * @return сдвиг заголовка в px
+     */
+    private int parseEdgeTabs(String ns0, String path, YNode n, List<EdgeLayout.Element> els,
+                              List<EdgeLayout.Element> extra, List<EdgeLayout.Tab> tabs) {
+        int tabW = n.integer("tab-width", 112, 40, 200);
+        int cw = n.integer("content-width", 320, 40, 480);
+        int ch = n.integer("content-height", 190, 20, 256);
+        int offset = n.integer("content-offset", -24, -256, 0);
+        int shift = n.integer("content-shift", 8 + tabW + 16, 0, 400);
+        YNode tn = n.require("tabs");
+        if (!tn.isMap()) throw tn.error("tabs — раздел вида { home: {label: \"Главная\", content: {...}} }");
+        int i = 0;
+        for (Map.Entry<String, YNode> en : tn.entries().entrySet()) {
+            String key = en.getKey();
+            YNode t = en.getValue();
+            try {
+                if (!t.isMap()) throw t.error("вкладка — раздел с полями label, icon, content, buttons...");
+                if (!key.matches("[a-z0-9_.-]+")) throw t.error("имя вкладки '" + key + "': только a-z, 0-9, _ . -");
+                t.checkKeys(EDGE_TAB_KEYS, problems);
+                int y = 9 + 18 * i++;
+                String icon = t.has("icon") ? Ids.key(ns, t.reqString("icon"), t.require("icon")) : null;
+                String label = t.string("label", key);
+                int[][] normal = colors(t, "default");
+                boolean hasContent = t.has("content");
+                List<GuiDef.Action> direct = t.has("actions") ? actions(t.require("actions")) : List.of();
+                if (!hasContent && direct.isEmpty()) problems.warn(t.source(), "вкладка '" + key + "' без content и без actions — нажатие ничего не сделает");
+                String glyph = ns0 + ":edge/" + path + "/tab/" + key, tex = ns0 + ":gui/edge/" + path + "/tab_" + key;
+                EdgeLayout.Element el = new EdgeLayout.Element("tab." + key, t.source(), EdgeLayout.Kind.BUTTON, 8, y, tabW, 16, glyph, tex,
+                        new EdgeLayout.Art(label, null, List.of(), icon, normal[0], normal[1], false, null, 1),
+                        t.string("name", null), t.stringList("lore"), hasContent ? List.of() : direct, hasContent ? key : null);
+                els.add(el);
+                registerGlyphs(el, EdgeLayout.ascentFor(y));
+                String activeGlyph = null;
+                EdgeLayout.Element panel = null;
+                if (hasContent) {
+                    int[][] act = EdgeLayout.STYLES.get("primary");
+                    activeGlyph = glyph + "_active";
+                    EdgeLayout.Element active = new EdgeLayout.Element("tab." + key + ".active", t.source(), EdgeLayout.Kind.BUTTON, 8, y, tabW, 16,
+                            activeGlyph, tex + "_active", new EdgeLayout.Art(label, null, List.of(), icon, act[0], act[1], true, null, 1),
+                            null, List.of(), List.of(), null);
+                    extra.add(active);
+                    registerGlyphs(active, EdgeLayout.ascentFor(y));
+                    YNode c = t.require("content");
+                    if (!c.isMap()) throw c.error("content — раздел {label, subtitle, text, icon, style}");
+                    c.checkKeys(EDGE_CONTENT_KEYS, problems);
+                    int[][] cc = colors(c, "dark");
+                    String cicon = c.has("icon") ? Ids.key(ns, c.reqString("icon"), c.require("icon")) : null;
+                    panel = new EdgeLayout.Element("content." + key, c.source(), EdgeLayout.Kind.PANEL, 0, 0, cw, ch,
+                            ns0 + ":edge/" + path + "/content/" + key, ns0 + ":gui/edge/" + path + "/content_" + key,
+                            new EdgeLayout.Art(c.string("label", ""), c.string("subtitle", null), c.stringList("text"), cicon, cc[0], cc[1], false, null,
+                                    c.integer("icon-scale", 3, 1, 4)), null, List.of(), List.of(), null);
+                    extra.add(panel);
+                    // панель в заголовке: отрицательный ascent опускает её из шапки диалога в центр экрана
+                    registerGlyphs(panel, offset);
+                }
+                List<EdgeLayout.FooterButton> buttons = new ArrayList<>();
+                if (t.has("buttons")) {
+                    for (YNode b : t.require("buttons").asList()) {
+                        if (!b.isMap()) throw b.error("кнопка — раздел {label, actions}");
+                        b.checkKeys(EDGE_BUTTON_KEYS, problems);
+                        buttons.add(new EdgeLayout.FooterButton(b.reqString("label"), b.string("name", b.string("tooltip", null)),
+                                b.integer("width", 150, 20, 1024), actions(b.require("actions"))));
+                    }
+                    if (buttons.size() > 2) throw t.require("buttons").error("у вкладки не больше двух кнопок внизу (так устроены диалоги)");
+                }
+                tabs.add(new EdgeLayout.Tab(key, t.source(), activeGlyph, List.of(), List.copyOf(buttons), direct, panel));
+            } catch (ConfigException ex) {
+                problems.error(ex);
+            }
+        }
+        if (tabs.isEmpty()) throw tn.error("нет ни одной вкладки");
+        return shift;
     }
 
     /** Глифы элемента (по одному на кусок шириной ≤ MAX_TILE). */
@@ -681,7 +766,7 @@ public final class DefinitionLoader {
                         }
                     }
                 }
-                tabs.add(new EdgeLayout.Tab(key, t.source(), activeGlyph, List.copyOf(content), List.of(), direct));
+                tabs.add(new EdgeLayout.Tab(key, t.source(), activeGlyph, List.copyOf(content), List.of(), direct, null));
             } catch (ConfigException ex) {
                 problems.error(ex);
             }

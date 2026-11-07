@@ -107,6 +107,39 @@ final class EdgeMenu {
             lines.add(line);
         }
         Component body = Component.join(JoinConfiguration.newlines(), lines);
+
+        // панель вкладки в заголовке: клиент центрирует заголовок, сдвиг уводит панель вправо от вкладок
+        Component title = Component.text(" ");
+        if (current != null && current.titlePanel() != null) {
+            EdgeLayout.Element p = current.titlePanel();
+            Component t = Component.empty().append(text.shift(edge.titleShift()));
+            int marker = EdgeLayout.markerIndex(plugin.state().defs().guis(), def.id());
+            int cursor = 0;
+            for (int i = 0; i < p.tiles(); i++) {
+                GlyphDef g = glyphs.get(p.tileGlyph(i));
+                if (g == null) continue;
+                if (p.tileX(i) != cursor) t = t.append(text.shift(p.tileX(i) - cursor));
+                // цвет-маркер (254, 10 + номер меню, номер куска): по нему шейдер находит панель
+                Component tile = glyph(g);
+                if (marker >= 0) tile = tile.color(net.kyori.adventure.text.format.TextColor.color(254, 10 + marker, i));
+                t = t.append(tile);
+                cursor = p.tileX(i) + g.advance();
+            }
+            title = t;
+        }
+        List<ActionButton> footerButtons = new ArrayList<>();
+        if (current != null) {
+            for (EdgeLayout.FooterButton b : current.buttons()) {
+                List<GuiDef.Action> actions = b.actions();
+                ActionButton.Builder ab = ActionButton.builder(text.parse(b.label(), player)).width(b.width())
+                        .action(io.papermc.paper.registry.data.dialog.action.DialogAction.customClick(
+                                (view, audience) -> {
+                                    if (audience instanceof Player pl) pl.getScheduler().run(plugin, t2 -> guis.run(pl, null, actions), null);
+                                }, ClickCallback.Options.builder().uses(ClickCallback.UNLIMITED_USES).lifetime(Duration.ofMinutes(30)).build()));
+                if (b.tooltip() != null) ab.tooltip(text.parse(b.tooltip(), player));
+                footerButtons.add(ab.build());
+            }
+        }
         ActionButton footer = edge.closeButton()
                 ? ActionButton.builder(Component.translatable("gui.done")).width(100)
                     .action(io.papermc.paper.registry.data.dialog.action.DialogAction.customClick(
@@ -116,10 +149,13 @@ final class EdgeMenu {
                 : ActionButton.builder(Component.empty()).width(1).build();
         // NONE: при переключении вкладки сервер сразу присылает новый диалог, без мигания
         DialogBase.DialogAfterAction after = edge.hasTabs() ? DialogBase.DialogAfterAction.NONE : DialogBase.DialogAfterAction.CLOSE;
+        DialogType type = footerButtons.size() == 2 ? DialogType.confirmation(footerButtons.get(0), footerButtons.get(1))
+                : footerButtons.size() == 1 ? DialogType.notice(footerButtons.getFirst()) : DialogType.notice(footer);
+        Component finalTitle = title;
         Dialog dialog = Dialog.create(f -> f.empty()
-                .base(DialogBase.builder(Component.text(" ")).canCloseWithEscape(true).pause(false).afterAction(after)
+                .base(DialogBase.builder(finalTitle).canCloseWithEscape(true).pause(false).afterAction(after)
                         .body(List.of(DialogBody.plainMessage(body, 1024))).build())
-                .type(DialogType.notice(footer)));
+                .type(type));
         player.showDialog(dialog);
     }
 

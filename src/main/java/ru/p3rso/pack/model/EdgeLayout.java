@@ -23,7 +23,7 @@ import java.util.function.ToIntFunction;
  * он перекрывает рамку фокуса, которую клиент рисует вокруг текста после клика.
  */
 public record EdgeLayout(int width, int height, boolean centered, Element background, List<Element> elements,
-                         boolean closeButton, List<Tab> tabs, List<Element> extraArt) {
+                         boolean closeButton, List<Tab> tabs, List<Element> extraArt, int titleShift, int contentScale) {
     public static final int LINE_HEIGHT = 9;
     /** Ширина строки для меню у края экрана — больше ширины экрана в пикселях интерфейса при масштабе ≥ 2. */
     public static final int WIDE_LINE = 980;
@@ -69,14 +69,31 @@ public record EdgeLayout(int width, int height, boolean centered, Element backgr
      * и кнопки диалога внизу. Вкладка без содержимого просто выполняет actions.
      */
     public record Tab(String key, Source source, String activeGlyph, List<Element> content,
-                      List<FooterButton> buttons, List<GuiDef.Action> actions) {
-        public boolean hasContent() { return !content.isEmpty(); }
+                      List<FooterButton> buttons, List<GuiDef.Action> actions, Element titlePanel) {
+        public boolean hasContent() { return !content.isEmpty() || titlePanel != null; }
     }
 
     /** Кнопка диалога внизу по центру. */
     public record FooterButton(String label, String tooltip, int width, List<GuiDef.Action> actions) {}
 
     public boolean hasTabs() { return !tabs.isEmpty(); }
+
+    /** Вкладки у края экрана с панелями в заголовке — их панели центрирует и увеличивает шейдер text.vsh. */
+    public boolean hasTitlePanels() {
+        for (Tab t : tabs) if (t.titlePanel() != null) return true;
+        return false;
+    }
+
+    /** Порядковый номер такого меню среди всех (по id) — зашит в цвет-маркер панели (G = 10 + номер). */
+    public static int markerIndex(java.util.Map<String, GuiDef> guis, String guiId) {
+        int i = 0;
+        for (GuiDef g : guis.values()) {
+            if (!g.isEdge() || !g.edge().hasTitlePanels()) continue;
+            if (g.id().equals(guiId)) return i;
+            i++;
+        }
+        return -1;
+    }
 
     public Tab tab(String key) {
         for (Tab t : tabs) if (t.key().equals(key)) return t;

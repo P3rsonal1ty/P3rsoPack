@@ -116,36 +116,37 @@ class DefaultsAndPackTest {
         assertEquals(java.util.List.of(), problems.all());
         var edge = r.resolved().guis().get("p3rso:edge_menu").edge();
         assertTrue(edge.hasTabs());
-        assertTrue(edge.centered(), "окно со вкладками — по центру экрана");
+        assertFalse(edge.centered(), "вкладки у левого края экрана");
         assertEquals("home", edge.defaultTab().key());
         String dir = "assets/p3rso/textures/gui/edge/edge_menu/";
-        assertTrue(r.files().containsKey(dir + "tab_home.png"));
-        assertTrue(r.files().containsKey(dir + "tab_home_active.png"));
-        assertTrue(r.files().containsKey(dir + "content_home_t0.png"), "панель 324 px режется на куски ≤ 240");
-        assertTrue(r.files().containsKey(dir + "content_home_t1.png"));
-        assertTrue(r.files().containsKey(dir + "content_home_b0.png"), "кнопка «Играть» на панели");
-        assertTrue(r.files().containsKey(dir + "background_t0.png"));
-        GlyphDef bg = r.resolved().glyphs().get("p3rso:edge/edge_menu/background_t0");
-        assertEquals(13, bg.ascent(), "фон на 6 px выше первой строки — перекрывает рамку фокуса");
-        var visible = edge.visible("home");
-        var rows = edge.rows(visible, id -> r.resolved().glyphs().get(id).advance(),
+        for (String f : java.util.List.of("tab_home", "tab_home_active", "content_home_t0", "content_home_t1", "background")) {
+            assertTrue(r.files().containsKey(dir + f + ".png"), f);
+        }
+        assertTrue(r.files().containsKey("assets/minecraft/shaders/core/gui.vsh"), "шейдер убирает рамку фокуса");
+        String textVsh = new String(r.files().get("assets/minecraft/shaders/core/text.vsh"), StandardCharsets.UTF_8);
+        assertTrue(textVsh.contains("const float PANEL_W[MENUS] = float[](320.0);"), "размер панели зашит в шейдер");
+        assertTrue(textVsh.contains("#include <minecraft:projection.glsl>"));
+        assertEquals(textVsh.chars().filter(ch -> ch == '{').count(), textVsh.chars().filter(ch -> ch == '}').count(), "скобки GLSL сбалансированы");
+        var panel = edge.tab("home").titlePanel();
+        assertNotNull(panel);
+        assertEquals(2, panel.tiles(), "панель 320 px — два куска по 160");
+        GlyphDef t0 = r.resolved().glyphs().get(panel.tileGlyph(0));
+        assertEquals(-24, t0.ascent());
+        assertEquals(190, t0.height());
+        assertEquals(161, t0.advance());
+        assertEquals(136, edge.titleShift());
+        assertEquals(13, r.resolved().glyphs().get("p3rso:edge/edge_menu/background").ascent(), "фон выше текста на 6 px");
+        var rows = edge.rows(edge.visible("home"), id -> r.resolved().glyphs().get(id).advance(),
                 java.util.Map.of("tab.home", edge.tab("home").activeGlyph()));
         for (var row : rows) {
-            assertEquals(460, row.stream().mapToInt(ru.p3rso.pack.model.EdgeLayout.Segment::advance).sum(),
-                    "все строки шириной окна — клиент центрирует текст уже экрана");
+            assertEquals(ru.p3rso.pack.model.EdgeLayout.WIDE_LINE,
+                    row.stream().mapToInt(ru.p3rso.pack.model.EdgeLayout.Segment::advance).sum(), "строки шире экрана — прижаты к краю");
         }
-        // вкладка «Главная» y=9: строка 1 — подсвеченная картинка, строка 2 — кликабельный пробел
         var g = rows.get(1).stream().filter(s -> s.element() != null && s.element().key().equals("tab.home")).findFirst().orElseThrow();
         assertEquals("p3rso:edge/edge_menu/tab/home_active", g.glyph());
         var c = rows.get(2).stream().filter(s -> s.element() != null && s.element().key().equals("tab.home")).findFirst().orElseThrow();
         assertEquals(ru.p3rso.pack.model.EdgeLayout.SegmentType.CLICK_SHIFT, c.type());
-        // кнопка на панели кликабельна и стоит на строках ниже первой строки панели
-        var btn = edge.tab("home").content().get(1);
-        assertTrue(btn.clickable());
-        var btnRow = rows.get(btn.firstLine()).stream().filter(s -> s.element() == btn).findFirst().orElseThrow();
-        assertEquals(ru.p3rso.pack.model.EdgeLayout.SegmentType.GLYPH, btnRow.type());
-        // строка кнопки: панель (некликабельная) на ней не занимает места — клик попадает в кнопку
-        assertTrue(rows.get(btn.firstLine()).stream().noneMatch(s -> s.element() != null && s.element().key().equals("content.home")));
+        assertEquals(1, edge.tab("home").buttons().size());
         assertTrue(edge.tab("close").actions().stream().anyMatch(a -> a.type() == ru.p3rso.pack.model.GuiDef.Action.Type.CLOSE));
     }
 

@@ -156,6 +156,16 @@ class ConfigErrorsTest {
     }
 
     @Test
+    void guiCommandsValidated() throws Exception {
+        TestFiles.write(dir, "guis/a.yml", "one:\n  command: /Menu\n");
+        Problems p = load("guis", "b.yml", "two:\n  command: menu\nthree:\n  command: two words\n");
+        List<String> msgs = p.all().stream().map(Problems.Problem::describe).toList();
+        assertEquals(2, msgs.size(), msgs::toString);
+        assertTrue(msgs.get(0).contains("/menu уже открывает окно из guis/a.yml:1"), msgs::toString);
+        assertTrue(msgs.get(1).startsWith("guis/b.yml:4"), msgs::toString);
+    }
+
+    @Test
     void missingTextureReportedByGenerator() throws Exception {
         TestFiles.write(dir, "items/a.yml", "gem:\n  texture: item/nope\n");
         Problems p = new Problems();

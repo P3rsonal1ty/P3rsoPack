@@ -1,0 +1,63 @@
+# Коллекция предметов из примеров. Только для админов (выдаёт предметы бесплатно).
+# ЛКМ — взять 1, Shift+ЛКМ — взять 16.
+
+collection:
+  title: "<glyph:star> <gradient:#9ff5cf:#5af0b4>Коллекция</gradient>"
+  rows: 6
+  background: collection_bg
+  permission: p3rsopack.admin
+  items:
+    ruby:
+      slot: 10
+      item: ruby
+      lore: &take_lore
+        - "<#5af0b4>ЛКМ <gray>— взять 1"
+        - "<#5af0b4>Shift+ЛКМ <gray>— взять 16"
+      left-actions: ["give: ruby", "sound: entity.item.pickup"]
+      shift-left-actions: ["give: ruby 16", "sound: entity.item.pickup"]
+    ruby_sword:
+      slot: 11
+      item: ruby_sword
+      lore: ["<#5af0b4>ЛКМ <gray>— взять"]
+      left-actions: ["give: ruby_sword", "sound: item.armor.equip_iron"]
+    ruby_helmet:
+      slot: 12
+      item: ruby_helmet
+      lore: ["<#5af0b4>ЛКМ <gray>— взять"]
+      left-actions: ["give: ruby_helmet", "sound: item.armor.equip_diamond"]
+    ruby_chestplate:
+      slot: 13
+      item: ruby_chestplate
+      lore: ["<#5af0b4>ЛКМ <gray>— взять"]
+      left-actions: ["give: ruby_chestplate", "sound: item.armor.equip_diamond"]
+    coin:
+      slot: 14
+      item: shiny_coin
+      lore: *take_lore
+      left-actions: ["give: shiny_coin", "sound: entity.item.pickup"]
+      shift-left-actions: ["give: shiny_coin 16", "sound: entity.item.pickup"]
+    ore:
+      slot: 15
+      item: ruby_ore
+      lore: *take_lore
+      left-actions: ["give: ruby_ore", "sound: block.stone.place"]
+      shift-left-actions: ["give: ruby_ore 16", "sound: block.stone.place"]
+    chair:
+      slot: 16
+      item: chair
+      lore: ["<#5af0b4>ЛКМ <gray>— взять", "<gray>Поставьте ПКМ, сядьте ПКМ по стулу"]
+      left-actions: ["give: chair", "sound: block.wood.place"]
+    table:
+      slot: 19
+      item: table
+      lore: ["<#5af0b4>ЛКМ <gray>— взять"]
+      left-actions: ["give: table", "sound: block.wood.place"]
+    back:
+      slot: 45
+      item: icon_back
+      lore: ["<gray>В главное меню"]
+      actions: ["sound: ui.button.click", "open: main_menu"]
+    close:
+      slot: 49
+      item: button_close
+      actions: ["sound: block.chest.close 0.5 1.2", close]

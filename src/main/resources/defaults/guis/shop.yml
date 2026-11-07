@@ -11,6 +11,7 @@
 shop:
   title: "<white>Рубиновая лавка"
   rows: 6
+  permission: p3rsopack.admin    # окно выдаёт предметы бесплатно — только для админов
   background: menu               # глиф-фон из glyphs/
   title-offset: 0                # сдвиг текста заголовка
   items:
@@ -31,6 +32,12 @@ shop:
       item: ruby_sword
       actions:
         - "console: say %player% смотрит на рубиновый меч"
+    menu:
+      slot: 45
+      item: icon_back
+      name: "<#ffd36e>В главное меню"
+      actions:
+        - "open: main_menu"
     next:
       slot: 53
       item: button_next
@@ -45,6 +52,7 @@ shop:
 shop_page2:
   title: "<white>Страница 2 <glyph:ruby_icon>"
   rows: 6
+  permission: p3rsopack.admin
   background: menu
   open-actions:
     - "sound: ui.button.click"

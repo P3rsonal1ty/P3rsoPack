@@ -1,0 +1,129 @@
+# ┌──────────────────────────────────────────────────────────────────┐
+# │ Главное меню. Открывается у любого игрока командой /menu         │
+# │ (а также /p3rsopack gui main_menu). Фон — glyphs/menus.yml.      │
+# └──────────────────────────────────────────────────────────────────┘
+# Раскладка слотов (6 рядов по 9):
+#   ряд 0       — полоса-приветствие
+#   ряды 1–3    — три карточки 3×3: центры 19, 22, 25
+#   ряд 5       — кнопки: 46 профиль, 48 помощь, 49 закрыть, 50 GitHub, 52 ресурспак
+# Якоря YAML (&имя / *имя) позволяют не повторять одно и то же: вся карточка
+# кликается так же, как её иконка.
+
+main_menu:
+  title: "<glyph:star> <gradient:#ffe9a8:#ffb347>Главное меню</gradient>"
+  rows: 6
+  background: main_menu_bg
+  command: menu                  # /menu — регистрируется при старте сервера
+  # permission: p3rsopack.menu   # раскомментируйте, чтобы ограничить доступ
+  open-actions:
+    - "sound: block.amethyst_block.chime 0.8 1.2"
+  items:
+
+    # ── Карточка 1: коллекция ─────────────────────────────────────
+    collection:
+      slot: 19
+      item: icon_collection
+      lore: &collection_lore
+        - "<gray>Все предметы из примеров"
+        - "<gray>плагина в одном окне."
+        - ""
+        - "<#5af0b4>▶ Нажмите, чтобы открыть"
+      actions: &collection_actions
+        - "sound: ui.button.click"
+        - "open: collection"
+    collection_area:
+      slots: [9-11, 18, 20, 27-29]
+      item: blank
+      name: "<#5af0b4>Коллекция"
+      lore: *collection_lore
+      actions: *collection_actions
+
+    # ── Карточка 2: лавка ─────────────────────────────────────────
+    shop:
+      slot: 22
+      item: icon_shop
+      lore: &shop_lore
+        - "<gray>Рубины, мечи и броня."
+        - "<gray>Пример окна с разными"
+        - "<gray>действиями на ЛКМ и ПКМ."
+        - ""
+        - "<#ffd36e>▶ Нажмите, чтобы открыть"
+      actions: &shop_actions
+        - "sound: ui.button.click"
+        - "open: shop"
+    shop_area:
+      slots: [12-14, 21, 23, 30-32]
+      item: blank
+      name: "<#ffd36e>Рубиновая лавка"
+      lore: *shop_lore
+      actions: *shop_actions
+
+    # ── Карточка 3: ночное зрение ─────────────────────────────────
+    night:
+      slot: 25
+      item: icon_night
+      lore: &night_lore
+        - "<gray>Видно в темноте 60 секунд."
+        - ""
+        - "<#9cc2ff>ЛКМ <gray>— включить"
+        - "<#9cc2ff>ПКМ <gray>— выключить"
+      left-actions: &night_on
+        - "console: effect give %player% minecraft:night_vision 60 0 true"
+        - "sound: block.beacon.activate 0.6 1.6"
+        - "actionbar: <glyph:star> <#9cc2ff>Ночное зрение включено"
+        - close
+      right-actions: &night_off
+        - "console: effect clear %player% minecraft:night_vision"
+        - "sound: block.beacon.deactivate 0.6 1.4"
+        - "actionbar: <gray>Ночное зрение выключено"
+    night_area:
+      slots: [15-17, 24, 26, 33-35]
+      item: blank
+      name: "<#9cc2ff>Ночное зрение"
+      lore: *night_lore
+      left-actions: *night_on
+      right-actions: *night_off
+
+    # ── Нижняя панель ─────────────────────────────────────────────
+    profile:
+      slot: 46
+      item: icon_profile
+      lore:
+        - "<gray>Игрок: <white>%player%"
+      actions:
+        - "sound: entity.experience_orb.pickup 0.5 1.4"
+        - "message: <newline><glyph:star> <#b9a6ff>Профиль <white>%player%<newline><gray>  Здесь можно показать статистику,<newline><gray>  уровень и валюту из своего плагина.<newline>"
+    help:
+      slot: 48
+      item: icon_help
+      lore:
+        - "<gray>Команды сервера"
+      actions:
+        - "message: <newline><#7fd8ff><b>Помощь</b><newline><gray>  /menu <white>— это меню<newline><gray>  /p3rsopack <white>— управление плагином (для админов)<newline>"
+        - close
+    close:
+      slot: 49
+      item: button_close
+      lore:
+        - "<gray>Закрыть меню"
+      actions:
+        - "sound: block.chest.close 0.5 1.2"
+        - close
+    github:
+      slot: 50
+      item: icon_link
+      lore:
+        - "<gray>Исходный код плагина"
+      actions:
+        - "message: <#6fe3a8>▶ <click:open_url:'https://github.com/P3rsonal1ty/P3rsoPack'><hover:show_text:'Открыть в браузере'><u>github.com/P3rsonal1ty/P3rsoPack</u></hover></click>"
+        - close
+    pack:
+      slot: 52
+      material: PAINTING
+      name: "<#ffd36e>Не видно картинок?"
+      lore:
+        - "<gray>Включите ресурспаки сервера:"
+        - "<white>Сетевая игра → сервер → Настроить"
+        - "<white>→ Наборы ресурсов: Включены"
+      actions:
+        - "sound: ui.button.click"

@@ -39,7 +39,8 @@ public final class DefinitionLoader {
     static final Set<String> FURNITURE_KEYS = union(LOOK_KEYS, Set.of("material", "name", "lore", "display", "hitbox",
             "seats", "seat", "rotation-step", "drop", "sounds"));
     static final Set<String> GLYPH_KEYS = Set.of("texture", "height", "ascent", "char");
-    static final Set<String> GUI_KEYS = Set.of("title", "rows", "background", "background-offset", "title-offset", "items", "open-actions");
+    static final Set<String> GUI_KEYS = Set.of("title", "rows", "background", "background-offset", "title-offset", "items", "open-actions",
+            "command", "permission");
     static final Set<String> GUI_ITEM_KEYS = Set.of("slot", "slots", "item", "material", "amount", "name", "lore", "item-model",
             "actions", "left-actions", "right-actions", "shift-left-actions", "shift-right-actions", "middle-actions", "drop-actions");
 
@@ -64,6 +65,7 @@ public final class DefinitionLoader {
     private final Map<String, BlockDef> blocks = new LinkedHashMap<>();
     private final Map<String, FurnitureDef> furniture = new LinkedHashMap<>();
     private final Map<String, Source> glyphCharsExplicit = new HashMap<>();
+    private final Map<String, Source> guiCommands = new HashMap<>();
 
     public DefinitionLoader(Path root, String namespace, Environment env, Problems problems) {
         this.root = root;
@@ -459,8 +461,17 @@ public final class DefinitionLoader {
             }
         }
         List<GuiDef.Action> open = n.has("open-actions") ? actions(n.require("open-actions")) : List.of();
+        String command = null;
+        if (n.has("command")) {
+            command = n.reqString("command").trim().toLowerCase(Locale.ROOT);
+            if (command.startsWith("/")) command = command.substring(1);
+            if (!command.matches("[a-z0-9_-]{1,32}")) throw n.require("command").error("команда — одно слово из a-z, 0-9, _ и -, например menu");
+            Source prev = guiCommands.putIfAbsent(command, n.source());
+            if (prev != null) throw n.require("command").error("команда /" + command + " уже открывает окно из " + prev);
+        }
+        String permission = n.has("permission") ? n.reqString("permission").trim() : null;
         return new GuiDef(id, n.source(), n.string("title", ""), rows, bg, n.integer("background-offset", Integer.MIN_VALUE),
-                n.integer("title-offset", 0), List.copyOf(list), open);
+                n.integer("title-offset", 0), List.copyOf(list), open, command, permission);
     }
 
     private GuiDef.GuiItem parseGuiItem(String key, YNode it, int rows, Map<Integer, String> taken) {

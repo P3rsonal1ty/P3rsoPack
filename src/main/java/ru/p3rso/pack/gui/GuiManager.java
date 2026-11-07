@@ -28,8 +28,19 @@ public final class GuiManager {
     public boolean open(Player player, String id) {
         GuiDef def = plugin.state().defs().guis().get(id);
         if (def == null) return false;
+        if (def.permission() != null && !player.hasPermission(def.permission())) {
+            player.sendActionBar(plugin.text().parse("<red>Нет доступа к этому разделу", player));
+            player.playSound(Sound.sound(Key.key("entity.villager.no"), Sound.Source.MASTER, 1f, 1f));
+            return false;
+        }
         player.getScheduler().run(plugin, t -> openNow(player, def), null);
         return true;
+    }
+
+    /** Окно, привязанное к команде (guis/*.yml → command:). */
+    public GuiDef byCommand(String command) {
+        for (GuiDef g : plugin.state().defs().guis().values()) if (command.equals(g.command())) return g;
+        return null;
     }
 
     private void openNow(Player player, GuiDef def) {

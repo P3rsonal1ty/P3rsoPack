@@ -1,0 +1,16 @@
+# Фоны главного меню и коллекции (176×222, как окно сундука на 6 рядов)
+main_menu_bg:
+  texture: gui/main_menu
+  height: 222
+  ascent: 13
+
+collection_bg:
+  texture: gui/collection
+  height: 222
+  ascent: 13
+
+# Звёздочка для заголовков и сообщений: <glyph:star>
+star:
+  texture: hud/star
+  height: 9
+  ascent: 8

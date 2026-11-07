@@ -95,8 +95,18 @@ public final class P3rsoPackPlugin extends JavaPlugin implements Listener {
         pm.registerEvents(new FurnitureListener(this, furniture), this);
         pm.registerEvents(packs, this);
 
-        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, ev ->
-                ev.registrar().register(PackCommand.build(this), "P3rsoPack: кастомные предметы, GUI, блоки и мебель", List.of("pp")));
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, ev -> {
+            ev.registrar().register(PackCommand.build(this), "P3rsoPack: кастомные предметы, GUI, блоки и мебель", List.of("pp"));
+            // команды окон (guis/*.yml → command:). Новые команды появляются после перезапуска сервера.
+            for (var gui : state.defs().guis().values()) {
+                if (gui.command() == null) continue;
+                try {
+                    ev.registrar().register(PackCommand.guiCommand(this, gui.command()), "Открыть меню " + gui.id(), List.of());
+                } catch (RuntimeException e) {
+                    getLogger().warning("Не удалось зарегистрировать /" + gui.command() + ": " + e.getMessage());
+                }
+            }
+        });
 
         // первая загрузка синхронно: предметы должны существовать до входа игроков
         doReload(Bukkit.getConsoleSender());

@@ -109,6 +109,23 @@ public final class PackCommand {
         return root.build();
     }
 
+    /** /menu и т.п.: открыть окно, у которого в конфиге задан command. Права — permission окна. */
+    public static LiteralCommandNode<CommandSourceStack> guiCommand(P3rsoPackPlugin plugin, String command) {
+        return Commands.literal(command)
+                .executes(ctx -> {
+                    if (!(ctx.getSource().getExecutor() instanceof Player p)) {
+                        plugin.msg(ctx.getSource().getSender(), "<red>Команда только для игроков");
+                        return 0;
+                    }
+                    var gui = plugin.guis().byCommand(command);
+                    if (gui == null) {
+                        plugin.msg(p, "<red>Это меню сейчас отключено");
+                        return 0;
+                    }
+                    return plugin.guis().open(p, gui.id()) ? Command.SINGLE_SUCCESS : 0;
+                }).build();
+    }
+
     private static SuggestionProvider<CommandSourceStack> ids(P3rsoPackPlugin plugin, Function<Definitions, Collection<String>> f) {
         return (ctx, b) -> {
             String rem = b.getRemaining().toLowerCase(Locale.ROOT);

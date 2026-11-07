@@ -15,7 +15,9 @@ public record GuiDef(
         int backgroundOffset,
         int titleOffset,
         List<GuiItem> items,
-        List<Action> openActions) {
+        List<Action> openActions,
+        String command,
+        String permission) {
 
     /**
      * Элемент окна. {@code item} — id кастомного предмета или null; {@code material} — ванильный материал.

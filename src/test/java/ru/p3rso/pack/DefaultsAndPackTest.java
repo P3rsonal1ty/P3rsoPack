@@ -68,7 +68,15 @@ class DefaultsAndPackTest {
         assertTrue(defs.items().containsKey("p3rso:ruby_ore"), "у блока есть авто-предмет");
         assertTrue(defs.items().containsKey("p3rso:chair"), "у мебели есть авто-предмет");
         assertEquals(ItemDef.Placement.Type.BLOCK, defs.items().get("p3rso:ruby_ore").placement().type());
-        assertEquals(2, defs.guis().size());
+        assertEquals(4, defs.guis().size());
+        assertEquals("menu", defs.guis().get("p3rso:main_menu").command());
+        assertEquals("p3rsopack.admin", defs.guis().get("p3rso:collection").permission());
+        // якоря YAML: вся карточка кликается как иконка
+        var main = defs.guis().get("p3rso:main_menu");
+        var icon = main.items().stream().filter(i -> i.key().equals("shop")).findFirst().orElseThrow();
+        var area = main.items().stream().filter(i -> i.key().equals("shop_area")).findFirst().orElseThrow();
+        assertEquals(icon.actions(), area.actions());
+        assertEquals(java.util.List.of(12, 13, 14, 21, 23, 30, 31, 32), area.slots());
         assertEquals(40, r.sha1().length());
     }
 
@@ -128,8 +136,8 @@ class DefaultsAndPackTest {
         GlyphDef icon = r.resolved().glyphs().get("p3rso:ruby_icon");
         assertEquals(9, icon.advance(), "16 px при масштабе 8/16 = 8, +1");
         JsonObject font = json(r, "assets/p3rso/font/glyphs.json");
-        assertEquals(3, font.getAsJsonArray("providers").size());
-        JsonObject first = font.getAsJsonArray("providers").get(1).getAsJsonObject();
+        assertEquals(6, font.getAsJsonArray("providers").size());
+        JsonObject first = font.getAsJsonArray("providers").get(0).getAsJsonObject();
         assertEquals("bitmap", first.get("type").getAsString());
         JsonObject shift = json(r, "assets/p3rso/font/shift.json").getAsJsonArray("providers").get(0).getAsJsonObject();
         assertEquals("space", shift.get("type").getAsString());

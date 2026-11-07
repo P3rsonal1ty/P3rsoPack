@@ -1,0 +1,27 @@
+# Иконки для главного меню (guis/main_menu.yml). Обычные предметы — их можно использовать и в своих окнах.
+
+icon_collection:
+  name: "<#5af0b4>Коллекция"
+  texture: item/icon_collection
+icon_shop:
+  name: "<#ffd36e>Рубиновая лавка"
+  texture: item/icon_shop
+icon_night:
+  name: "<#9cc2ff>Ночное зрение"
+  texture: item/icon_night
+icon_profile:
+  name: "<#b9a6ff>Профиль"
+  texture: item/icon_profile
+icon_help:
+  name: "<#7fd8ff>Помощь"
+  texture: item/icon_help
+icon_link:
+  name: "<#6fe3a8>Мы на GitHub"
+  texture: item/icon_link
+icon_back:
+  name: "<#ffd36e>Назад"
+  texture: item/icon_back
+
+# Невидимый предмет: заполняет карточки меню, чтобы кликалась вся карточка, а не только иконка
+blank:
+  texture: item/blank

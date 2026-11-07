@@ -1,160 +1,185 @@
 # ┌────────────────────────────────────────────────────────────────────────┐
-# │ Меню у ЛЕВОГО КРАЯ ЭКРАНА: /menu                                       │
-# │ type: edge — не окно-сундук, а диалог (клиент 1.21.6+), без модов      │
-# │ и шейдеров.                                                            │
+# │ Меню со вкладками: /menu                                               │
+# │ Вкладки — у ЛЕВОГО КРАЯ экрана, содержимое — ПО ЦЕНТРУ экрана.         │
+# │ type: edge — диалог (клиент 1.21.6+), без модов и шейдеров.            │
 # └────────────────────────────────────────────────────────────────────────┘
-# Как это работает: тело диалога — кликабельный текст шире экрана, а такой текст клиент прижимает
-# к левому краю. Каждый элемент — картинка внутри текста с действием на клик; плагин сам раскладывает
-# элементы по строкам (по 9 px), так что клик всегда совпадает с картинкой.
+# Как это работает:
+#  • вкладки — кликабельный текст шире экрана в теле диалога: такой текст клиент прижимает к левому краю;
+#  • панель вкладки — картинка в заголовке диалога: заголовок клиент центрирует по экрану,
+#    а отрицательный ascent (content-offset) опускает картинку из шапки в середину экрана;
+#  • buttons — обычные кнопки диалога внизу по центру (не больше двух на вкладку);
+#  • нажатие на вкладку меняет панель и подсветку, меню при этом не закрывается.
 #
-# Холст: width × height пикселей, (0,0) — левый верхний угол меню.
-# Элемент:
-#   x, y, width, height — положение и размер в пикселях холста
-#   kind: button | panel | header | image
-#     button — кнопка: label, icon, style (default/primary/danger/success/gold/blue/dark) или color: "#rrggbb", active
-#     panel  — панель: label, subtitle, text (строки), icon (+ icon-scale), pill (кнопка-«таблетка»), style/color
-#     header — логотип: label (крупно), subtitle
-#     image  — своя картинка: texture (ширина/высота = размер PNG)
-#   name, lore — подсказка при наведении (MiniMessage)
-#   actions — те же действия, что в обычных окнах (open, command, console, message, actionbar, sound, give, close)
-# Картинки рисуются при сборке пака в pack/assets/p3rso/textures/gui/edge/<окно>/<элемент>.png —
-# положите туда свою PNG с тем же именем, и плагин будет использовать её.
-# Правило раскладки: элементы, стоящие на одних строках (по 9 px), не должны пересекаться по x.
-# После клика меню закрывается.
+# Картинки вкладок и панелей рисуются при сборке пака (надписи — заглавными, своим пиксельным шрифтом).
+# Своя картинка: положите PNG по пути pack/assets/p3rso/textures/gui/edge/edge_menu/<content_вкладка|tab_вкладка>.png
+#
+# Вкладка:
+#   label, icon, style/color          — кнопка слева
+#   name, lore                        — подсказка при наведении
+#   content: {label, subtitle, text: [...], icon, icon-scale, style/color} — панель по центру
+#   buttons: [{label, tooltip, width, actions}]  — кнопки внизу
+#   actions: [...]                    — для вкладки без content: что сделать при нажатии
 
 edge_menu:
   type: edge
   command: menu
-  width: 252
-  height: 196
-  background: auto               # auto | none | <текстура>
-  elements:
-    logo:
-      kind: header
-      x: 8
-      y: 6
-      width: 150
-      height: 26
-      label: "P3RSO"
-      subtitle: "ГЛАВНОЕ МЕНЮ"
-
-    # ── боковая панель ─────────────────────────────────────────────────
+  tab-width: 100
+  content-width: 200
+  content-height: 150
+  content-offset: -24              # ascent панели: меньше — ниже на экране
+  tabs:
     home:
-      x: 7
-      y: 36
       label: "Главная"
       icon: item/icon_home
-      style: primary
-      active: true
-      name: "<#c9b6ff>Главная"
-      lore: ["<gray>Вы здесь"]
-      actions: ["sound: ui.button.click"]
+      content:
+        label: "ДОБРО ПОЖАЛОВАТЬ"
+        subtitle: "P3RSO NETWORK"
+        icon: item/icon_home
+        text:
+          - "ВЫБЕРИТЕ РАЗДЕЛ СЛЕВА."
+          - ""
+          - "• RPG МИР — ДАНЖИ, КЛАССЫ"
+          - "• МИНИ-ИГРЫ — СКОРО"
+          - "• МАГАЗИН И НАГРАДЫ"
+          - ""
+          - "ПРИЯТНОЙ ИГРЫ!"
+      buttons:
+        - label: "<green>▶ Играть"
+          tooltip: "<gray>Перейти в RPG мир"
+          actions: ["close", "command: play"]     # у P3rsoNet это /play
+
     rpg:
-      x: 7
-      y: 54
       label: "RPG мир"
       icon: item/icon_rpg
-      name: "<#7dffc4><b>RPG мир"
-      lore: ["<gray>Основной сервер с данжами,", "<gray>классами и экономикой."]
-      actions: ["sound: entity.player.levelup 0.6 1.4", "command: play"]   # у P3rsoNet это /play
+      content:
+        label: "RPG МИР"
+        subtitle: "СЕЗОН 1"
+        icon: item/icon_rpg
+        style: success
+        text:
+          - "ДАНЖИ И БОССЫ"
+          - "КЛАССЫ И НАВЫКИ"
+          - "ЭКОНОМИКА И ТОРГОВЛЯ"
+          - "КЛАНЫ И ВОЙНЫ"
+          - ""
+          - "ОНЛАЙН КАЖДЫЙ ВЕЧЕР"
+      buttons:
+        - label: "<green>▶ Играть"
+          actions: ["sound: entity.player.levelup 0.6 1.4", "close", "command: play"]
+
     games:
-      x: 7
-      y: 72
       label: "Мини-игры"
       icon: item/icon_games
-      name: "<#c9b6ff>Мини-игры"
-      lore: ["<gray>Скоро здесь появятся быстрые режимы."]
-      actions: ["sound: block.note_block.pling 0.6 0.8", "actionbar: <#c9b6ff>Мини-игры скоро!"]
+      content:
+        label: "МИНИ-ИГРЫ"
+        subtitle: "СКОРО"
+        icon: item/icon_games
+        style: primary
+        text:
+          - "БЫСТРЫЕ РЕЖИМЫ"
+          - "НА 5-10 МИНУТ:"
+          - ""
+          - "• ПАРКУР"
+          - "• СПЛИФ"
+          - "• БИТВА СТРОИТЕЛЕЙ"
+      buttons:
+        - label: "<gray>Напомнить"
+          actions: ["sound: block.note_block.pling 0.6 0.8", "actionbar: <#c9b6ff>Сообщим, когда откроются!"]
+
+    news:
+      label: "Новости"
+      icon: item/icon_scroll
+      content:
+        label: "НОВОСТИ"
+        subtitle: "ОБНОВЛЕНИЕ 1.2"
+        icon: item/icon_scroll
+        text:
+          - "• НОВЫЙ ДАНЖ"
+          - "  «РУБИНОВЫЕ КОПИ»"
+          - "• ИВЕНТ В СУББОТУ"
+          - "  В 18:00"
+          - "• СКИДКИ -20%"
+          - "  ДО КОНЦА НЕДЕЛИ"
+      buttons:
+        - label: "Подробнее в чат"
+          actions:
+            - "sound: item.book.page_turn"
+            - "message: <newline><#ffe08a><b>Новости сервера</b><newline><gray>• <white>Открыт новый данж «Рубиновые копи»<newline><gray>• <white>Ивент в субботу в 18:00<newline><gray>• <white>Скидки 20% в магазине до конца недели<newline>"
+
+    reward:
+      label: "Награда"
+      icon: item/icon_gift
+      content:
+        label: "НАГРАДА"
+        subtitle: "КАЖДЫЙ ДЕНЬ"
+        icon: item/icon_gift
+        style: gold
+        text:
+          - "ЗАХОДИТЕ КАЖДЫЙ ДЕНЬ"
+          - "И ЗАБИРАЙТЕ ПОДАРОК."
+          - ""
+          - "7 ДНЕЙ ПОДРЯД —"
+          - "РЕДКИЙ СУНДУК!"
+      buttons:
+        - label: "<gold>Забрать"
+          actions:
+            - "sound: entity.player.levelup 0.5 1.8"
+            - "actionbar: <#ffd36e><glyph:star> Награда будет доступна завтра"
+            # подключите свой плагин наград: - "console: rewards give %player% daily"
+
     profile:
-      x: 7
-      y: 90
       label: "Профиль"
       icon: item/icon_profile
-      name: "<#b9a6ff>Профиль"
-      lore: ["<gray>Игрок: <white>%player%"]
-      actions:
-        - "sound: entity.experience_orb.pickup 0.5 1.4"
-        - "message: <newline><glyph:star> <#b9a6ff>Профиль <white>%player%<newline><gray>  Сюда можно вывести уровень, класс и баланс.<newline>"
+      content:
+        label: "ПРОФИЛЬ"
+        subtitle: "ВАША СТАТИСТИКА"
+        icon: item/icon_profile
+        style: blue
+        text:
+          - "УРОВЕНЬ, КЛАСС, БАЛАНС"
+          - "И ДОСТИЖЕНИЯ —"
+          - "ПОДКЛЮЧИТЕ СВОЙ ПЛАГИН."
+      buttons:
+        - label: "Показать в чате"
+          actions:
+            - "sound: entity.experience_orb.pickup 0.5 1.4"
+            - "message: <glyph:star> <#b9a6ff>Профиль <white>%player%"
+
     shop:
-      x: 7
-      y: 108
       label: "Магазин"
       icon: item/icon_shop
-      name: "<#ffd36e>Магазин"
-      lore: ["<gray>Рубиновая лавка", "<dark_gray>(пример, для админов)"]
-      actions: ["sound: ui.button.click", "open: shop"]
+      content:
+        label: "МАГАЗИН"
+        subtitle: "РУБИНОВАЯ ЛАВКА"
+        icon: item/icon_shop
+        style: gold
+        text:
+          - "МЕЧИ, БРОНЯ И РЕСУРСЫ."
+          - ""
+          - "(ПРИМЕР — ТОЛЬКО"
+          - "ДЛЯ АДМИНОВ)"
+      buttons:
+        - label: "<gold>Открыть лавку"
+          actions: ["sound: ui.button.click", "open: shop"]
+
     items:
-      x: 7
-      y: 126
       label: "Предметы"
       icon: item/icon_collection
-      name: "<#7fb8ff>Предметы"
-      lore: ["<gray>Все примеры P3rsoPack", "<dark_gray>(для админов)"]
-      actions: ["sound: ui.button.click", "open: collection"]
-    other:
-      x: 7
-      y: 153
-      label: "Ещё меню"
-      icon: item/icon_back
-      style: blue
-      name: "<#7fb8ff>Другие меню"
-      lore: ["<gray>Полноэкранное меню-сундук"]
-      actions: ["sound: ui.button.click", "open: hub_menu"]
+      content:
+        label: "ПРЕДМЕТЫ"
+        subtitle: "ВСЕ ПРИМЕРЫ"
+        icon: item/icon_collection
+        text:
+          - "РУБИНЫ, МЕЧ, БРОНЯ,"
+          - "РУДА, СТУЛ И СТОЛ."
+          - ""
+          - "(ДЛЯ АДМИНОВ)"
+      buttons:
+        - label: "Открыть коллекцию"
+          actions: ["sound: ui.button.click", "open: collection"]
+
     close:
-      x: 7
-      y: 171
       label: "Закрыть"
       icon: item/button_close
       style: danger
-      name: "<#ff7a7a>Закрыть"
-      actions: ["sound: block.chest.close 0.5 1.2", close]
-
-    # ── содержимое ─────────────────────────────────────────────────────
-    banner:
-      kind: panel
-      x: 93
-      y: 36
-      width: 152
-      height: 52
-      style: success
-      label: "RPG МИР"
-      subtitle: "СЕЗОН 1"
-      icon: item/icon_rpg
-      icon-scale: 2
-      pill: "ИГРАТЬ"
-      name: "<#7dffc4><b>RPG мир · Сезон 1"
-      lore: ["<gray>Новые данжи и классы.", "", "<#7dffc4>▶ Нажмите, чтобы играть"]
-      actions: ["sound: entity.player.levelup 0.6 1.4", "command: play"]
-    news:
-      kind: panel
-      x: 93
-      y: 90
-      width: 152
-      height: 52
-      style: dark
-      label: "НОВОСТИ"
-      icon: item/icon_scroll
-      text: ["• НОВЫЙ ДАНЖ", "• ИВЕНТ В СУББОТУ", "• СКИДКИ -20%"]
-      name: "<#ffe08a>Новости"
-      lore: ["<gray>Нажмите, чтобы прочитать полностью"]
-      actions:
-        - "sound: item.book.page_turn"
-        - "message: <newline><#ffe08a><b>Новости сервера</b><newline><gray>• <white>Открыт новый данж «Рубиновые копи»<newline><gray>• <white>Ивент в субботу в 18:00<newline><gray>• <white>Скидки 20% в магазине до конца недели<newline>"
-    reward:
-      kind: panel
-      x: 93
-      y: 144
-      width: 152
-      height: 45
-      style: gold
-      label: "НАГРАДА"
-      subtitle: "ЗАХОДИ КАЖДЫЙ ДЕНЬ"
-      icon: item/icon_gift
-      icon-scale: 2
-      pill: "ЗАБРАТЬ"
-      name: "<gradient:#ffe9a8:#ffb347><b>Ежедневная награда"
-      lore: ["<gray>Заходите каждый день и забирайте подарок."]
-      actions:
-        - "sound: entity.player.levelup 0.5 1.8"
-        - "actionbar: <#ffd36e><glyph:star> Награда будет доступна завтра"
-        # подключите свой плагин наград: - "console: rewards give %player% daily"
+      actions: ["sound: block.chest.close 0.5 1.2", "close"]

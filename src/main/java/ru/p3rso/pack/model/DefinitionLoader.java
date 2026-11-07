@@ -42,7 +42,10 @@ public final class DefinitionLoader {
     static final Set<String> GUI_KEYS = Set.of("title", "rows", "background", "background-offset", "title-offset", "items", "open-actions",
             "command", "permission", "hide-player-inventory", "buttons", "type");
     static final Set<String> EDGE_KEYS = Set.of("type", "command", "permission", "width", "height", "background",
-            "close-button", "elements");
+            "close-button", "elements", "tabs", "tab-width", "content-width", "content-height", "content-offset");
+    static final Set<String> EDGE_TAB_KEYS = Set.of("label", "icon", "style", "color", "name", "lore", "content", "buttons", "actions");
+    static final Set<String> EDGE_CONTENT_KEYS = Set.of("label", "subtitle", "text", "icon", "icon-scale", "style", "color", "pill");
+    static final Set<String> EDGE_BUTTON_KEYS = Set.of("label", "tooltip", "width", "actions");
     static final Set<String> EDGE_ELEMENT_KEYS = Set.of("kind", "x", "y", "width", "height", "texture", "label", "subtitle",
             "text", "icon", "icon-scale", "style", "color", "active", "pill", "name", "lore", "actions");
     static final Set<String> GUI_ITEM_KEYS = Set.of("slot", "slots", "item", "material", "amount", "name", "lore", "item-model",
@@ -505,6 +508,7 @@ public final class DefinitionLoader {
     /** Меню у левого края экрана (диалог): холст с элементами по пикселям. */
     private GuiDef parseEdgeGui(String id, YNode n) {
         n.checkKeys(EDGE_KEYS, problems);
+        if (n.has("tabs")) return parseEdgeTabs(id, n);
         int width = n.integer("width", 250, 16, 512);
         int height = n.integer("height", 198, 9, 256);
         String path = Ids.path(id);
@@ -544,7 +548,105 @@ public final class DefinitionLoader {
         List<GuiDef.Action> none = List.of();
         return new GuiDef(id, n.source(), "", 1, null, 0, 0, List.of(), none, guiCommand(id, n),
                 n.has("permission") ? n.reqString("permission").trim() : null, false,
-                new EdgeLayout(width, height, bgGlyph, List.copyOf(els), n.bool("close-button", false)));
+                new EdgeLayout(width, height, bgGlyph, List.copyOf(els), n.bool("close-button", false), List.of(), List.of()));
+    }
+
+    /** Цвета из style/color раздела. */
+    private int[][] colors(YNode e, String defStyle) {
+        if (e.has("color")) {
+            String hex = e.reqString("color").trim();
+            if (!hex.matches("#?[0-9a-fA-F]{6}")) throw e.require("color").error("color — цвет вида \"#5a4aa0\"");
+            int v = Integer.parseInt(hex.replace("#", ""), 16);
+            int[] top = {v >> 16 & 255, v >> 8 & 255, v & 255};
+            return new int[][]{top, {top[0] * 45 / 100, top[1] * 45 / 100, top[2] * 45 / 100}};
+        }
+        String style = e.string("style", defStyle).toLowerCase(Locale.ROOT);
+        int[][] c = EdgeLayout.STYLES.get(style);
+        if (c == null) throw e.require("style").error("неизвестный style '" + style + "', допустимо: "
+                + String.join(", ", new java.util.TreeSet<>(EdgeLayout.STYLES.keySet())) + " (или color: \"#rrggbb\")");
+        return c;
+    }
+
+    /**
+     * Меню со вкладками: слева столбец вкладок (тело диалога, прижато к краю экрана), по центру панель
+     * выбранной вкладки (глиф в заголовке диалога — его клиент центрирует), внизу кнопки диалога.
+     */
+    private GuiDef parseEdgeTabs(String id, YNode n) {
+        String path = Ids.path(id), ns0 = Ids.namespace(id);
+        int tabW = n.integer("tab-width", 100, 40, 200);
+        int contentW = n.integer("content-width", 200, 40, 256);
+        int contentH = n.integer("content-height", 150, 20, 256);
+        int contentAscent = n.integer("content-offset", -24, -256, 0);
+        YNode tn = n.require("tabs");
+        if (!tn.isMap()) throw tn.error("tabs — раздел вида { home: {label: \"Главная\", content: {...}} }");
+        List<EdgeLayout.Element> els = new ArrayList<>();
+        List<EdgeLayout.Element> extra = new ArrayList<>();
+        List<EdgeLayout.Tab> tabs = new ArrayList<>();
+        int i = 0;
+        for (Map.Entry<String, YNode> en : tn.entries().entrySet()) {
+            String key = en.getKey();
+            YNode t = en.getValue();
+            try {
+                if (!t.isMap()) throw t.error("вкладка — раздел с полями label, icon, content, buttons...");
+                if (!key.matches("[a-z0-9_.-]+")) throw t.error("имя вкладки '" + key + "': только a-z, 0-9, _ . -");
+                t.checkKeys(EDGE_TAB_KEYS, problems);
+                String icon = t.has("icon") ? Ids.key(ns, t.reqString("icon"), t.require("icon")) : null;
+                String label = t.string("label", key);
+                int[][] normal = colors(t, "default");
+                int y = 9 + 18 * i++;
+                String glyph = ns0 + ":edge/" + path + "/tab/" + key, tex = ns0 + ":gui/edge/" + path + "/tab_" + key;
+                EdgeLayout.Art art = new EdgeLayout.Art(label, null, List.of(), icon, normal[0], normal[1], false, null, 1);
+                boolean hasContent = t.has("content");
+                List<GuiDef.Action> direct = t.has("actions") ? actions(t.require("actions")) : List.of();
+                if (!hasContent && direct.isEmpty()) problems.warn(t.source(), "вкладка '" + key + "' без content и без actions — нажатие ничего не сделает");
+                EdgeLayout.Element el = new EdgeLayout.Element("tab." + key, t.source(), EdgeLayout.Kind.BUTTON, 7, y, tabW, 16, glyph, tex, art,
+                        t.string("name", null), t.stringList("lore"), hasContent ? List.of() : direct, hasContent ? key : null);
+                els.add(el);
+                glyphs.put(glyph, new GlyphDef(glyph, t.source(), tex, 16, EdgeLayout.ascentFor(y), (char) 0, 0));
+                String activeGlyph = null, contentGlyph = null;
+                if (hasContent) {
+                    int[][] act = EdgeLayout.STYLES.get("primary");
+                    activeGlyph = glyph + "_active";
+                    String atex = tex + "_active";
+                    extra.add(new EdgeLayout.Element("tab." + key + ".active", t.source(), EdgeLayout.Kind.BUTTON, 7, y, tabW, 16, activeGlyph, atex,
+                            new EdgeLayout.Art(label, null, List.of(), icon, act[0], act[1], true, null, 1), null, List.of(), List.of(), null));
+                    glyphs.put(activeGlyph, new GlyphDef(activeGlyph, t.source(), atex, 16, EdgeLayout.ascentFor(y), (char) 0, 0));
+                    YNode c = t.require("content");
+                    if (!c.isMap()) throw c.error("content — раздел {label, subtitle, text, icon, style}");
+                    c.checkKeys(EDGE_CONTENT_KEYS, problems);
+                    int[][] cc = colors(c, "dark");
+                    String cicon = c.has("icon") ? Ids.key(ns, c.reqString("icon"), c.require("icon")) : null;
+                    contentGlyph = ns0 + ":edge/" + path + "/content/" + key;
+                    String ctex = ns0 + ":gui/edge/" + path + "/content_" + key;
+                    extra.add(new EdgeLayout.Element("content." + key, c.source(), EdgeLayout.Kind.PANEL, 0, 0, contentW, contentH, contentGlyph, ctex,
+                            new EdgeLayout.Art(c.string("label", ""), c.string("subtitle", null), c.stringList("text"), cicon, cc[0], cc[1], false,
+                                    c.string("pill", null), c.integer("icon-scale", 3, 1, 4)), null, List.of(), List.of(), null));
+                    // панель в заголовке: отрицательный ascent опускает её из шапки диалога в центр экрана
+                    glyphs.put(contentGlyph, new GlyphDef(contentGlyph, c.source(), ctex, contentH, contentAscent, (char) 0, 0));
+                }
+                List<EdgeLayout.FooterButton> buttons = new ArrayList<>();
+                if (t.has("buttons")) {
+                    for (YNode b : t.require("buttons").asList()) {
+                        if (!b.isMap()) throw b.error("кнопка — раздел {label, actions}");
+                        b.checkKeys(EDGE_BUTTON_KEYS, problems);
+                        buttons.add(new EdgeLayout.FooterButton(b.reqString("label"), b.string("tooltip", null),
+                                b.integer("width", 150, 20, 1024), actions(b.require("actions"))));
+                    }
+                    if (buttons.size() > 2) throw t.require("buttons").error("у вкладки не больше двух кнопок внизу (так устроены диалоги)");
+                }
+                tabs.add(new EdgeLayout.Tab(key, t.source(), activeGlyph, contentGlyph, List.copyOf(buttons), direct));
+            } catch (ConfigException ex) {
+                problems.error(ex);
+            }
+        }
+        if (tabs.isEmpty()) throw tn.error("нет ни одной вкладки");
+        int width = tabW + 14, height = 9 + 18 * tabs.size() + 7;
+        String bgGlyph = ns0 + ":edge/" + path + "/background";
+        String bgTex = ns0 + ":gui/edge/" + path + "/background";
+        glyphs.put(bgGlyph, new GlyphDef(bgGlyph, n.source(), bgTex, ((height + 8) / 9) * 9, -2, (char) 0, 0));
+        return new GuiDef(id, n.source(), "", 1, null, 0, 0, List.of(), List.of(), guiCommand(id, n),
+                n.has("permission") ? n.reqString("permission").trim() : null, false,
+                new EdgeLayout(width, height, bgGlyph, List.copyOf(els), false, List.copyOf(tabs), List.copyOf(extra)));
     }
 
     private EdgeLayout.Element parseEdgeElement(String ns0, String guiPath, String key, YNode e, int canvasWidth) {
@@ -592,7 +694,7 @@ public final class DefinitionLoader {
         }
         List<GuiDef.Action> acts = e.has("actions") ? actions(e.require("actions")) : List.of();
         EdgeLayout.Element el = new EdgeLayout.Element(key, e.source(), kind, x, y, w, h, glyph, texture, art,
-                e.string("name", null), e.stringList("lore"), acts);
+                e.string("name", null), e.stringList("lore"), acts, null);
         glyphs.put(glyph, new GlyphDef(glyph, e.source(), texture, h, EdgeLayout.ascentFor(y), (char) 0, 0));
         return el;
     }
@@ -732,7 +834,13 @@ public final class DefinitionLoader {
                 it.actions().values().forEach(this::checkActions);
             }
             checkActions(g.openActions());
-            if (g.isEdge()) for (EdgeLayout.Element e : g.edge().elements()) checkActions(e.actions());
+            if (g.isEdge()) {
+                for (EdgeLayout.Element e : g.edge().elements()) checkActions(e.actions());
+                for (EdgeLayout.Tab t : g.edge().tabs()) {
+                    checkActions(t.actions());
+                    for (EdgeLayout.FooterButton b : t.buttons()) checkActions(b.actions());
+                }
+            }
         }
         for (BlockDef b : blocks.values()) {
             for (BlockDef.Drop d : b.drops()) {

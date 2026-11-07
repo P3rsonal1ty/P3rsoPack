@@ -17,7 +17,8 @@ import java.util.function.ToIntFunction;
  * <p>Координаты элементов — пиксели холста (0,0 — левый верхний угол меню). По вертикали текст идёт строками
  * по 9 px; строка 0 отдана под фон, холст начинается со строки 1.</p>
  */
-public record EdgeLayout(int width, int height, String backgroundGlyph, List<Element> elements, boolean closeButton) {
+public record EdgeLayout(int width, int height, String backgroundGlyph, List<Element> elements, boolean closeButton,
+                         List<Tab> tabs, List<Element> extraArt) {
     public static final int LINE_HEIGHT = 9;
     /** Ширина каждой строки — больше ширины экрана в пикселях интерфейса при масштабе ≥ 2. */
     public static final int LINE_WIDTH = 980;
@@ -30,13 +31,36 @@ public record EdgeLayout(int width, int height, String backgroundGlyph, List<Ele
 
     public record Element(String key, Source source, Kind kind, int x, int y, int width, int height,
                           String glyph, String texture, Art art, String name, List<String> lore,
-                          List<GuiDef.Action> actions) {
-        public boolean clickable() { return !actions.isEmpty(); }
+                          List<GuiDef.Action> actions, String tab) {
+        public boolean clickable() { return !actions.isEmpty() || tab != null; }
 
         /** Первая строка текста (с учётом строки фона). */
         public int firstLine() { return 1 + y / LINE_HEIGHT; }
 
         public int lastLine() { return 1 + (y + height - 1) / LINE_HEIGHT; }
+    }
+
+    /**
+     * Вкладка: кнопка слева ({@code tab}-элемент), её подсвеченный вариант, панель по центру экрана
+     * (глиф в заголовке диалога) и кнопки диалога внизу. Вкладка без панели просто выполняет actions.
+     */
+    public record Tab(String key, Source source, String activeGlyph, String contentGlyph,
+                      List<FooterButton> buttons, List<GuiDef.Action> actions) {}
+
+    /** Кнопка диалога внизу по центру. */
+    public record FooterButton(String label, String tooltip, int width, List<GuiDef.Action> actions) {}
+
+    public boolean hasTabs() { return !tabs.isEmpty(); }
+
+    public Tab tab(String key) {
+        for (Tab t : tabs) if (t.key().equals(key)) return t;
+        return null;
+    }
+
+    /** Первая вкладка с панелью — открывается по умолчанию. */
+    public Tab defaultTab() {
+        for (Tab t : tabs) if (t.contentGlyph() != null) return t;
+        return tabs.isEmpty() ? null : tabs.getFirst();
     }
 
     public int canvasLines() { return (height + LINE_HEIGHT - 1) / LINE_HEIGHT; }
@@ -58,7 +82,10 @@ public record EdgeLayout(int width, int height, String backgroundGlyph, List<Ele
      * Раскладывает меню по строкам. {@code advance} — ширина глифа в пикселях (из сборки пака).
      * Каждая строка добивается сдвигом ровно до {@link #LINE_WIDTH}, поэтому все строки начинаются с одного x.
      */
-    public List<List<Segment>> rows(ToIntFunction<String> advance) {
+    public List<List<Segment>> rows(ToIntFunction<String> advance) { return rows(advance, Map.of()); }
+
+    /** {@code glyphOverride}: ключ элемента → другой глиф (подсвеченная активная вкладка). */
+    public List<List<Segment>> rows(ToIntFunction<String> advance, Map<String, String> glyphOverride) {
         List<List<Segment>> rows = new ArrayList<>();
         int total = totalLines();
         List<Element> sorted = new ArrayList<>(elements);
@@ -73,9 +100,10 @@ public record EdgeLayout(int width, int height, String backgroundGlyph, List<Ele
             }
             for (Element e : sorted) {
                 if (line < e.firstLine() || line > e.lastLine()) continue;
-                int a = advance.applyAsInt(e.glyph());
+                String glyph = glyphOverride.getOrDefault(e.key(), e.glyph());
+                int a = advance.applyAsInt(glyph);
                 if (e.x() > cursor) row.add(new Segment(SegmentType.SHIFT, e.x() - cursor, null, null));
-                if (line == e.firstLine()) row.add(new Segment(SegmentType.GLYPH, a, e.glyph(), e));
+                if (line == e.firstLine()) row.add(new Segment(SegmentType.GLYPH, a, glyph, e));
                 else if (e.clickable()) row.add(new Segment(SegmentType.CLICK_SHIFT, a, null, e));
                 else row.add(new Segment(SegmentType.SHIFT, a, null, null));
                 cursor = Math.max(cursor, e.x()) + a;

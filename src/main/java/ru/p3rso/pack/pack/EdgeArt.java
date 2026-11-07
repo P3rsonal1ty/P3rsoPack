@@ -72,6 +72,10 @@ public final class EdgeArt {
     }
 
     private void panel(EdgeLayout.Art art, BufferedImage icon) {
+        if (h >= 80) {
+            largePanel(art, icon);
+            return;
+        }
         int[] top = art.top(), bot = art.bottom();
         rrect(2, 3, w - 2, h - 2, new int[]{0, 0, 0}, new int[]{0, 0, 0}, 80, 6, 0);
         rrect(1, 1, w - 2, h - 2, top, bot, 240, 6, 2.5);
@@ -110,6 +114,48 @@ public final class EdgeArt {
             border(px, py, pw, ph, new int[]{255, 240, 190}, new int[]{120, 70, 10}, 255, 6);
             text(art.pill(), px + 6, py + 3, new int[]{70, 36, 6}, new int[]{90, 46, 8}, 1, false);
         }
+    }
+
+    /** Большая панель (содержимое вкладки): шапка с заголовком, золотой разделитель, текст, иконка в углу. */
+    private void largePanel(EdgeLayout.Art art, BufferedImage icon) {
+        int[] top = art.top(), bot = art.bottom();
+        int[] deep = darken(bot, .35);
+        rrect(3, 4, w - 3, h - 3, new int[]{0, 0, 0}, new int[]{0, 0, 0}, 90, 8, 0);
+        rrect(1, 1, w - 2, h - 2, mix(deep, bot, .6), deep, 244, 8, 2);
+        glow(w * 0.5, h * 0.45, w * 0.6, h * 0.5, lighten(top, .2), 26);
+        // шапка
+        rrect(4, 4, w - 8, 20, lighten(top, .1), top, 250, 5, 2);
+        glow(w * 0.5, 4, w * 0.6, 14, new int[]{255, 255, 255}, 55);
+        border(4, 4, w - 8, 20, lighten(top, .55), darken(top, .4), 255, 5);
+        int[] tc = textColor(top);
+        text(art.label(), 10, 10, tc, mix(tc, lighten(top, .6), .25), 1, tc[0] > 128);
+        // рамка и разделитель
+        border(1, 1, w - 2, h - 2, GOLD_L, GOLD_D, 255, 8);
+        border(3, 3, w - 6, h - 6, new int[]{255, 220, 150}, new int[]{120, 80, 40}, 40, 6);
+        int ty = 30;
+        if (art.subtitle() != null) {
+            text(art.subtitle(), 10, ty, GOLD_L, GOLD, 1, true);
+            ty += 11;
+        }
+        for (int i = 10; i < w - 10; i++) {
+            double t = 1 - Math.abs(i - w / 2.0) / (w / 2.0 - 10);
+            blend(i, ty, GOLD[0], GOLD[1], GOLD[2], (int) (40 + 170 * t));
+        }
+        diamond(w / 2, ty, 2, GOLD_L, 255);
+        ty += 7;
+        int iconSize = icon == null ? 0 : 16 * art.iconScale();
+        if (icon != null) {
+            int ix = w - iconSize - 10, iy = h - iconSize - 10;
+            glow(ix + iconSize / 2.0, iy + iconSize / 2.0, iconSize * 0.85, iconSize * 0.75, lighten(top, .5), 80);
+            blitIcon(icon, ix, iy, iconSize);
+        }
+        for (String line : art.text()) {
+            if (ty + PixelFont.HEIGHT > h - 8) break;
+            text(line, 10, ty, new int[]{232, 228, 255}, new int[]{190, 182, 235}, 1, true);
+            ty += 11;
+        }
+        int[][] corners = {{6, 6}, {w - 7, 6}, {6, h - 7}, {w - 7, h - 7}};
+        for (int[] c : corners) diamond(c[0], c[1], 1, GOLD_L, 255);
     }
 
     private void header(EdgeLayout.Art art, BufferedImage icon) {

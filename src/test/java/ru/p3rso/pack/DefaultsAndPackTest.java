@@ -110,32 +110,36 @@ class DefaultsAndPackTest {
     private int defsGlyphCount() { return load().glyphs().size(); }
 
     @Test
-    void edgeMenuRowsLineUpWithElements() throws Exception {
+    void edgeMenuTabsLineUp() throws Exception {
         Definitions defs = load();
         PackGenerator.Result r = build(defs);
         assertEquals(java.util.List.of(), problems.all());
         var edge = r.resolved().guis().get("p3rso:edge_menu").edge();
-        // картинки нарисованы и попали в шрифт
-        assertTrue(r.files().containsKey("assets/p3rso/textures/gui/edge/edge_menu/home.png"));
-        assertTrue(r.files().containsKey("assets/p3rso/textures/gui/edge/edge_menu/background.png"));
-        GlyphDef home = r.resolved().glyphs().get("p3rso:edge/edge_menu/home");
-        assertEquals(16, home.height());
-        assertEquals(7, home.ascent(), "y=36 кратен 9 → верх картинки на верху строки");
-        assertEquals(77, home.advance(), "кнопка 76 px + 1");
-        var rows = edge.rows(id -> r.resolved().glyphs().get(id).advance());
-        assertEquals(edge.totalLines(), rows.size());
-        for (var row : rows) {
-            int sum = row.stream().mapToInt(ru.p3rso.pack.model.EdgeLayout.Segment::advance).sum();
-            assertEquals(ru.p3rso.pack.model.EdgeLayout.LINE_WIDTH, sum, "каждая строка ровно LINE_WIDTH — иначе строки съедут");
+        assertTrue(edge.hasTabs());
+        assertEquals("home", edge.defaultTab().key());
+        for (String f : java.util.List.of("tab_home", "tab_home_active", "content_home", "tab_close", "background")) {
+            assertTrue(r.files().containsKey("assets/p3rso/textures/gui/edge/edge_menu/" + f + ".png"), f);
         }
-        // строка 0 — фон; кнопка «Главная» (y=36) начинается на строке 1 + 36/9 = 5 и продолжается кликабельным пробелом на 6
-        var r5 = rows.get(5).stream().filter(s -> s.element() != null && s.element().key().equals("home")).findFirst().orElseThrow();
-        assertEquals(ru.p3rso.pack.model.EdgeLayout.SegmentType.GLYPH, r5.type());
-        var r6 = rows.get(6).stream().filter(s -> s.element() != null && s.element().key().equals("home")).findFirst().orElseThrow();
-        assertEquals(ru.p3rso.pack.model.EdgeLayout.SegmentType.CLICK_SHIFT, r6.type());
-        assertEquals(77, r6.advance());
-        // у фона ascent −2 → его верх на строке 1
-        assertEquals(-2, r.resolved().glyphs().get("p3rso:edge/edge_menu/background").ascent());
+        assertFalse(r.files().containsKey("assets/p3rso/textures/gui/edge/edge_menu/content_close.png"), "у «Закрыть» нет панели");
+        GlyphDef tab = r.resolved().glyphs().get("p3rso:edge/edge_menu/tab/home");
+        assertEquals(7, tab.ascent(), "первая вкладка y=9 — верх строки");
+        assertEquals(101, tab.advance(), "вкладка 100 px + 1");
+        GlyphDef content = r.resolved().glyphs().get("p3rso:edge/edge_menu/content/home");
+        assertEquals(-24, content.ascent(), "content-offset");
+        assertEquals(150, content.height());
+        var rows = edge.rows(id -> r.resolved().glyphs().get(id).advance(),
+                java.util.Map.of("tab.home", edge.tab("home").activeGlyph()));
+        for (var row : rows) {
+            assertEquals(ru.p3rso.pack.model.EdgeLayout.LINE_WIDTH,
+                    row.stream().mapToInt(ru.p3rso.pack.model.EdgeLayout.Segment::advance).sum());
+        }
+        // вкладка «Главная»: строка 2 — подсвеченная картинка, строка 3 — кликабельный пробел
+        var g = rows.get(2).stream().filter(s -> s.element() != null && s.element().key().equals("tab.home")).findFirst().orElseThrow();
+        assertEquals("p3rso:edge/edge_menu/tab/home_active", g.glyph());
+        var c = rows.get(3).stream().filter(s -> s.element() != null && s.element().key().equals("tab.home")).findFirst().orElseThrow();
+        assertEquals(ru.p3rso.pack.model.EdgeLayout.SegmentType.CLICK_SHIFT, c.type());
+        // «Закрыть» — вкладка без панели, просто действия
+        assertTrue(edge.tab("close").actions().stream().anyMatch(a -> a.type() == ru.p3rso.pack.model.GuiDef.Action.Type.CLOSE));
     }
 
     @Test

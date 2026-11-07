@@ -362,7 +362,9 @@ public final class PackGenerator {
                     problems.error(gui.source(), "фон меню: нет файла pack/" + path);
                 }
             }
-            for (var e : edge.elements()) {
+            List<ru.p3rso.pack.model.EdgeLayout.Element> all = new java.util.ArrayList<>(edge.elements());
+            all.addAll(edge.extraArt());
+            for (var e : all) {
                 String path = Ids.asset(e.texture(), "textures", ".png");
                 if (userFiles.contains(path)) continue;          // своя картинка
                 if (e.art() == null) {
@@ -383,9 +385,13 @@ public final class PackGenerator {
                         }
                     }
                 }
-                for (char c : e.art().label().toCharArray()) {
+                StringBuilder chars = new StringBuilder(e.art().label());
+                if (e.art().subtitle() != null) chars.append(e.art().subtitle());
+                if (e.art().pill() != null) chars.append(e.art().pill());
+                e.art().text().forEach(chars::append);
+                for (char c : chars.toString().toCharArray()) {
                     if (!PixelFont.get().supports(c) && c != ' ') {
-                        problems.warn(e.source(), "элемент '" + e.key() + "': символ '" + c + "' нет в пиксельном шрифте — будет нарисован «?»");
+                        problems.warn(e.source(), "'" + e.key() + "': символа '" + c + "' нет в пиксельном шрифте — будет нарисован «?»");
                         break;
                     }
                 }

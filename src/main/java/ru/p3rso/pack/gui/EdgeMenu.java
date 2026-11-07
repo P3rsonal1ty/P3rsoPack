@@ -38,16 +38,34 @@ final class EdgeMenu {
     }
 
     void show(Player player, GuiDef def) {
+        EdgeLayout.Tab tab = def.edge().defaultTab();
+        show(player, def, tab == null ? null : tab.key());
+    }
+
+    private ClickEvent callback(Player owner, java.util.function.Consumer<Player> action) {
+        return ClickEvent.callback(audience -> {
+            if (audience instanceof Player p) p.getScheduler().run(plugin, t -> action.accept(p), null);
+        }, ClickCallback.Options.builder().uses(ClickCallback.UNLIMITED_USES).lifetime(Duration.ofMinutes(30)).build());
+    }
+
+    void show(Player player, GuiDef def, String tabKey) {
+        EdgeLayout edge = def.edge();
         Map<String, GlyphDef> glyphs = plugin.state().defs().glyphs();
         var text = plugin.text();
+        EdgeLayout.Tab current = tabKey == null ? null : edge.tab(tabKey);
         Map<String, ClickEvent> clicks = new HashMap<>();
         Map<String, HoverEvent<Component>> hovers = new HashMap<>();
-        for (EdgeLayout.Element e : def.edge().elements()) {
-            if (e.clickable()) {
+        for (EdgeLayout.Element e : edge.elements()) {
+            if (e.tab() != null) {
+                String target = e.tab();
+                clicks.put(e.key(), callback(player, p -> {
+                    p.playSound(net.kyori.adventure.sound.Sound.sound(net.kyori.adventure.key.Key.key("ui.button.click"),
+                            net.kyori.adventure.sound.Sound.Source.MASTER, 0.4f, 1.2f));
+                    show(p, def, target);
+                }));
+            } else if (e.clickable()) {
                 List<GuiDef.Action> actions = e.actions();
-                clicks.put(e.key(), ClickEvent.callback(audience -> {
-                    if (audience instanceof Player p) p.getScheduler().run(plugin, t -> guis.run(p, null, actions), null);
-                }, ClickCallback.Options.builder().uses(ClickCallback.UNLIMITED_USES).lifetime(Duration.ofMinutes(30)).build()));
+                clicks.put(e.key(), callback(player, p -> guis.run(p, null, actions)));
             }
             if (e.name() != null || !e.lore().isEmpty()) {
                 List<Component> tip = new ArrayList<>();
@@ -56,21 +74,19 @@ final class EdgeMenu {
                 hovers.put(e.key(), HoverEvent.showText(Component.join(JoinConfiguration.newlines(), tip)));
             }
         }
+        Map<String, String> override = new HashMap<>();
+        if (current != null && current.activeGlyph() != null) override.put("tab." + current.key(), current.activeGlyph());
+
         List<Component> lines = new ArrayList<>();
-        for (List<EdgeLayout.Segment> row : def.edge().rows(id -> {
+        for (List<EdgeLayout.Segment> row : edge.rows(id -> {
             GlyphDef g = glyphs.get(id);
             return g == null ? 0 : g.advance();
-        })) {
+        }, override)) {
             Component line = Component.empty();
             for (EdgeLayout.Segment s : row) {
                 Component c = switch (s.type()) {
-                    case SHIFT -> text.shift(s.advance());
-                    case CLICK_SHIFT -> text.shift(s.advance());
-                    case GLYPH -> {
-                        GlyphDef g = glyphs.get(s.glyph());
-                        yield g == null ? Component.empty() : Component.text(String.valueOf(g.character()))
-                                .font(text.glyphFont()).color(NamedTextColor.WHITE).shadowColor(ShadowColor.none());
-                    }
+                    case SHIFT, CLICK_SHIFT -> text.shift(s.advance());
+                    case GLYPH -> glyph(glyphs.get(s.glyph()));
                 };
                 if (s.element() != null) {
                     ClickEvent click = clicks.get(s.element().key());
@@ -83,15 +99,54 @@ final class EdgeMenu {
             lines.add(line);
         }
         Component body = Component.join(JoinConfiguration.newlines(), lines);
-        // у диалога обязана быть кнопка: либо «Закрыть» внизу, либо незаметная шириной 1 px
-        ActionButton footer = def.edge().closeButton()
-                ? ActionButton.builder(Component.translatable("gui.done")).width(100).build()
-                : ActionButton.builder(Component.empty()).width(1).build();
+
+        // заголовок диалога клиент центрирует по экрану — в нём панель выбранной вкладки
+        Component title = Component.text(" ");
+        if (current != null && current.contentGlyph() != null) {
+            GlyphDef cg = glyphs.get(current.contentGlyph());
+            if (cg != null) title = glyph(cg);
+        }
+
+        List<ActionButton> buttons = new ArrayList<>();
+        if (current != null) {
+            for (EdgeLayout.FooterButton b : current.buttons()) {
+                List<GuiDef.Action> actions = b.actions();
+                ActionButton.Builder ab = ActionButton.builder(text.parse(b.label(), player)).width(b.width())
+                        .action(io.papermc.paper.registry.data.dialog.action.DialogAction.customClick(
+                                (view, audience) -> {
+                                    if (audience instanceof Player p) p.getScheduler().run(plugin, t -> guis.run(p, null, actions), null);
+                                }, ClickCallback.Options.builder().uses(ClickCallback.UNLIMITED_USES).lifetime(Duration.ofMinutes(30)).build()));
+                if (b.tooltip() != null) ab.tooltip(text.parse(b.tooltip(), player));
+                buttons.add(ab.build());
+            }
+        }
+        DialogType type;
+        if (buttons.size() == 2) {
+            type = DialogType.confirmation(buttons.get(0), buttons.get(1));
+        } else if (buttons.size() == 1) {
+            type = DialogType.notice(buttons.getFirst());
+        } else if (edge.closeButton() || edge.hasTabs()) {
+            type = DialogType.notice(ActionButton.builder(Component.translatable("gui.done")).width(100)
+                    .action(io.papermc.paper.registry.data.dialog.action.DialogAction.customClick(
+                            (view, audience) -> { if (audience instanceof Player p) p.getScheduler().run(plugin, t -> p.closeDialog(), null); },
+                            ClickCallback.Options.builder().uses(ClickCallback.UNLIMITED_USES).lifetime(Duration.ofMinutes(30)).build()))
+                    .build());
+        } else {
+            type = DialogType.notice(ActionButton.builder(Component.empty()).width(1).build());
+        }
+        // NONE: при переключении вкладки сервер сразу присылает новый диалог, без мигания
+        DialogBase.DialogAfterAction after = edge.hasTabs() ? DialogBase.DialogAfterAction.NONE : DialogBase.DialogAfterAction.CLOSE;
+        Component finalTitle = title;
         Dialog dialog = Dialog.create(f -> f.empty()
-                .base(DialogBase.builder(Component.text(" ")).canCloseWithEscape(true).pause(false)
-                        .afterAction(DialogBase.DialogAfterAction.CLOSE)
+                .base(DialogBase.builder(finalTitle).canCloseWithEscape(true).pause(false).afterAction(after)
                         .body(List.of(DialogBody.plainMessage(body, 1024))).build())
-                .type(DialogType.notice(footer)));
+                .type(type));
         player.showDialog(dialog);
+    }
+
+    private Component glyph(GlyphDef g) {
+        if (g == null) return Component.empty();
+        return Component.text(String.valueOf(g.character())).font(plugin.text().glyphFont())
+                .color(NamedTextColor.WHITE).shadowColor(ShadowColor.none());
     }
 }

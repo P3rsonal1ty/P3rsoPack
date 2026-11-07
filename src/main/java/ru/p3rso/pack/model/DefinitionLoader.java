@@ -681,19 +681,11 @@ public final class DefinitionLoader {
 
     /**
      * Сдвиг значка ⚠ влево (px). Клиент ставит значок справа от заголовка, а ряд «заголовок + значок» центрирует;
-     * укорачивая заголовок на 2·N невидимым сдвигом, двигаем значок влево на N. Заголовок не может стать короче нуля.
+     * укорачивая заголовок на 2·N невидимым сдвигом, двигаем значок влево на N (отрицательное N — вправо).
+     * Точно по центру экрана значок встаёт при N ≈ (ширина заголовка)/2 + 5. Значок клиент всё равно держит в пределах экрана.
      */
     private int warningOffset(YNode n, List<EdgeLayout.Tab> tabs, int titleShift) {
-        if (!n.has("warning-offset")) return 0;
-        int v = n.integer("warning-offset", 0, 0, 1000);
-        int titleW = titleShift + 1;
-        for (EdgeLayout.Tab t : tabs) if (t.titlePanel() != null) { titleW += t.titlePanel().width(); break; }
-        int max = titleW / 2;
-        if (v > max) {
-            problems.warn(n.require("warning-offset").source(), "warning-offset " + v + " больше возможного (" + max + " px при текущей ширине панели) — будет " + max);
-            v = max;
-        }
-        return v;
+        return n.integer("warning-offset", 0, -1000, 1000);
     }
 
     /** Глифы элемента (по одному на кусок шириной ≤ MAX_TILE). */

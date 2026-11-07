@@ -497,7 +497,7 @@ public final class PackGenerator {
             return;
         }
         StringBuilder pw = new StringBuilder(), ph = new StringBuilder(), tw = new StringBuilder(), sh = new StringBuilder(),
-                asc = new StringBuilder(), tabs = new StringBuilder(), max = new StringBuilder();
+                asc = new StringBuilder(), tabs = new StringBuilder(), max = new StringBuilder(), warn = new StringBuilder();
         for (int i = 0; i < menus.size(); i++) {
             var e = menus.get(i);
             var panel = e.tabs().stream().filter(t -> t.titlePanel() != null).findFirst().orElseThrow().titlePanel();
@@ -510,6 +510,7 @@ public final class PackGenerator {
             asc.append(sep).append(g == null ? -24 : g.ascent()).append(".0");
             tabs.append(sep).append(e.width() + 18).append(".0");  // правый край столбца вкладок с фоном: 12 + ширина + 6
             max.append(sep).append(e.contentScale()).append(".0");
+            warn.append(sep).append(e.warningOffset()).append(".0");
         }
         int n = menus.size();
         String src = """
@@ -550,6 +551,7 @@ public final class PackGenerator {
                 const float ASCENT[MENUS] = float[](%ASC%);
                 const float TABS_RIGHT[MENUS] = float[](%TABS%);
                 const float MAX_SCALE[MENUS] = float[](%MAX%);
+                const float WARN_OFFSET[MENUS] = float[](%WARN%);
                 #endif
 
                 void main() {
@@ -574,9 +576,9 @@ public final class PackGenerator {
                         float tile = float(marker.b);
                         float tileX = tile * tw;
                         float tileW = min(tw, pw - tileX);
-                        // где панель стоит без шейдера: заголовок по центру экрана, сверху шапка 33 px
-                        float titleW = SHIFT[menu] + pw + 1.0;
-                        float left0 = floor((sw - titleW) * 0.5) + SHIFT[menu];
+                        // где панель стоит без шейдера: ряд «заголовок + 10 + значок 20» по центру экрана, сверху шапка 33 px
+                        float titleW = SHIFT[menu] + pw + 1.0 - 2.0 * WARN_OFFSET[menu];
+                        float left0 = floor((sw - (titleW + 30.0)) * 0.5) + SHIFT[menu];
                         float top0 = 12.0 + 7.0 - ASCENT[menu];
                         bool right = pos.x - left0 > tileX + tileW * 0.5;
                         bool bottom = pos.y - top0 > ph * 0.5;
@@ -598,7 +600,7 @@ public final class PackGenerator {
                 }
                 """
                 .replace("%N%", String.valueOf(n)).replace("%PW%", pw).replace("%PH%", ph).replace("%TW%", tw)
-                .replace("%SH%", sh).replace("%ASC%", asc).replace("%TABS%", tabs).replace("%MAX%", max);
+                .replace("%SH%", sh).replace("%ASC%", asc).replace("%TABS%", tabs).replace("%MAX%", max).replace("%WARN%", warn);
         files.put(path, src.getBytes(StandardCharsets.UTF_8));
     }
 

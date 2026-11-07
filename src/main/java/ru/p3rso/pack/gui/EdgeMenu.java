@@ -130,6 +130,8 @@ final class EdgeMenu {
                 t = t.append(tile);
                 cursor = p.tileX(i) + g.advance();
             }
+            // укороченный заголовок — значок ⚠ (он справа от заголовка) сдвигается влево на warning-offset
+            if (edge.warningOffset() > 0) t = t.append(text.shift(-2 * edge.warningOffset()));
             title = t;
         }
         List<ActionButton> footerButtons = new ArrayList<>();

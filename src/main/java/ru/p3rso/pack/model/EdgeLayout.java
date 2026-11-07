@@ -23,7 +23,8 @@ import java.util.function.ToIntFunction;
  * он перекрывает рамку фокуса, которую клиент рисует вокруг текста после клика.
  */
 public record EdgeLayout(int width, int height, boolean centered, Element background, List<Element> elements,
-                         boolean closeButton, List<Tab> tabs, List<Element> extraArt, int titleShift, int contentScale) {
+                         boolean closeButton, List<Tab> tabs, List<Element> extraArt, int titleShift, int contentScale,
+                         int warningOffset) {
     public static final int LINE_HEIGHT = 9;
     /**
      * Ширина строки для меню у края экрана: ровно ширина текстовой области виджета (1024 − 2·4). Клиент

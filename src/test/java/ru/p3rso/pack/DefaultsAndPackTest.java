@@ -131,6 +131,8 @@ class DefaultsAndPackTest {
         }
         String textVsh = new String(r.files().get("assets/minecraft/shaders/core/text.vsh"), StandardCharsets.UTF_8);
         assertTrue(textVsh.contains("const float PANEL_W[MENUS] = float[](320.0);"), "размер панели зашит в шейдер");
+        assertTrue(textVsh.contains("const float WARN_OFFSET[MENUS] = float[](228.0);"), "сдвиг значка учтён в расчёте положения панели");
+        assertEquals(228, edge.warningOffset());
         assertTrue(textVsh.contains("#include <minecraft:projection.glsl>"));
         assertEquals(textVsh.chars().filter(ch -> ch == '{').count(), textVsh.chars().filter(ch -> ch == '}').count(), "скобки GLSL сбалансированы");
         // зарезервированные слова GLSL 3.30 нельзя использовать как имена — иначе клиент не загрузит ресурсы

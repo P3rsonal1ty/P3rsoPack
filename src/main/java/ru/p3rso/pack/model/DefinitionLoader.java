@@ -43,7 +43,7 @@ public final class DefinitionLoader {
             "command", "permission", "hide-player-inventory", "buttons", "type");
     static final Set<String> EDGE_KEYS = Set.of("type", "command", "permission", "width", "height", "background",
             "close-button", "elements", "tabs", "tab-width", "position", "logo", "content-width", "content-height",
-            "content-offset", "content-shift", "content-scale");
+            "content-offset", "content-shift", "content-scale", "warning-offset");
     static final Set<String> EDGE_TAB_KEYS = Set.of("label", "icon", "style", "color", "name", "lore", "content", "buttons", "actions", "sections");
     static final Set<String> EDGE_CONTENT_KEYS = Set.of("label", "subtitle", "text", "icon", "icon-scale", "style", "color", "cards", "columns");
     static final Set<String> EDGE_CARD_KEYS = Set.of("title", "text", "icon", "style", "color");
@@ -563,7 +563,8 @@ public final class DefinitionLoader {
         return new GuiDef(id, n.source(), "", 1, null, 0, 0, List.of(), List.of(), guiCommand(id, n),
                 n.has("permission") ? n.reqString("permission").trim() : null, false,
                 new EdgeLayout(width, height, centered, bg, List.copyOf(els), n.bool("close-button", false), List.copyOf(tabs), List.copyOf(extra), titleShift,
-                        n.has("content-scale") && !n.reqString("content-scale").equalsIgnoreCase("auto") ? n.integer("content-scale", 4, 1, 6) : 4));
+                        n.has("content-scale") && !n.reqString("content-scale").equalsIgnoreCase("auto") ? n.integer("content-scale", 4, 1, 6) : 4,
+                        warningOffset(n, tabs, titleShift)));
     }
 
     /**
@@ -676,6 +677,23 @@ public final class DefinitionLoader {
             }
         }
         return new EdgeLayout.Tab(stateKey, t.source(), activeGlyph, List.of(), List.copyOf(buttons), direct, panel, button, List.copyOf(sections));
+    }
+
+    /**
+     * Сдвиг значка ⚠ влево (px). Клиент ставит значок справа от заголовка, а ряд «заголовок + значок» центрирует;
+     * укорачивая заголовок на 2·N невидимым сдвигом, двигаем значок влево на N. Заголовок не может стать короче нуля.
+     */
+    private int warningOffset(YNode n, List<EdgeLayout.Tab> tabs, int titleShift) {
+        if (!n.has("warning-offset")) return 0;
+        int v = n.integer("warning-offset", 0, 0, 1000);
+        int titleW = titleShift + 1;
+        for (EdgeLayout.Tab t : tabs) if (t.titlePanel() != null) { titleW += t.titlePanel().width(); break; }
+        int max = titleW / 2;
+        if (v > max) {
+            problems.warn(n.require("warning-offset").source(), "warning-offset " + v + " больше возможного (" + max + " px при текущей ширине панели) — будет " + max);
+            v = max;
+        }
+        return v;
     }
 
     /** Глифы элемента (по одному на кусок шириной ≤ MAX_TILE). */

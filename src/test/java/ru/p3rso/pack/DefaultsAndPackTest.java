@@ -99,7 +99,9 @@ class DefaultsAndPackTest {
         PackGenerator.Result r = build(defs);
         assertEquals(java.util.List.of(), problems.all());
         assertEquals("minecraft:empty", json(r, "assets/p3rso/items/p3rsopack_invisible.json").getAsJsonObject("model").get("type").getAsString());
-        assertTrue(r.files().containsKey("assets/minecraft/textures/gui/sprites/container/slot_highlight_back.png"), "slot-highlight: subtle");
+        assertTrue(r.files().containsKey("assets/minecraft/textures/gui/sprites/container/slot_highlight_back.png"), "slot-highlight: hidden");
+        assertEquals("", json(r, "assets/minecraft/lang/ru_ru.json").get("container.inventory").getAsString());
+        assertEquals("", json(r, "assets/minecraft/lang/en_us.json").get("container.inventory").getAsString());
         assertEquals(241, r.resolved().glyphs().get("p3rso:hub_bg").advance());
     }
 

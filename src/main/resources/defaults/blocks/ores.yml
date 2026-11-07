@@ -1,0 +1,20 @@
+# Кастомные блоки (на состояниях нотного блока, до 674 штук).
+# ВАЖНО: в config/paper-global.yml включите block-updates.disable-noteblock-updates: true
+# Предмет блока создаётся автоматически с тем же id: /atelier give @s ruby_ore
+
+ruby_ore:
+  name: "<#e0115f>Рубиновая руда"
+  texture: block/ruby_ore        # одна текстура на все стороны (cube_all)
+  # textures: {top: block/x_top, bottom: block/x_bottom, side: block/x_side}
+  hardness: 3.0                  # как у камня ~1.5, у обсидиана 50
+  tool: pickaxe                  # pickaxe/axe/shovel/hoe/sword/shears/none — ускоряет копание
+  requires-tool: true            # без кирки — без дропа
+  silk-touch: true               # шёлковое касание — выпадает сам блок
+  drops:
+    - item: ruby
+      amount: 1-3
+  exp: 2-5
+  sounds:
+    place: block.stone.place
+    break: block.stone.break
+    hit: block.stone.hit

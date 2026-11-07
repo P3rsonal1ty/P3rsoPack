@@ -1,0 +1,72 @@
+# Каждый раздел верхнего уровня — один предмет. Имя раздела = id предмета (atelier:<имя>).
+# Выдать: /atelier give @s ruby
+
+ruby:
+  material: PAPER                # базовый предмет (поведение: стак, еда и т.д.)
+  name: "<#e0115f>Рубин"         # MiniMessage
+  lore:
+    - "Драгоценный камень"
+    - "<dark_gray>Пример предмета Atelier"
+  # Текстура pack/assets/atelier/textures/item/ruby.png — модель сгенерируется сама
+  texture: item/ruby
+
+ruby_sword:
+  material: DIAMOND_SWORD
+  name: "<#e0115f>Рубиновый меч"
+  texture: item/ruby_sword
+  handheld: true                 # держать как меч, а не как плоский предмет
+  max-damage: 2000
+  attributes:                    # атрибуты ЗАМЕНЯЮТ стандартные атрибуты материала
+    - attribute: attack_damage
+      amount: 8
+      operation: add_number
+      slot: mainhand
+    - attribute: attack_speed
+      amount: -2.4
+      slot: mainhand
+  enchantments:
+    sharpness: 2
+
+ruby_helmet:
+  material: LEATHER_HELMET
+  name: "<#e0115f>Рубиновый шлем"
+  texture: item/ruby_helmet
+  # Текстура на игроке: pack/assets/atelier/textures/entity/equipment/humanoid/ruby.png
+  # (для поножей — humanoid_leggings/ruby.png). equipment-ассет atelier:ruby сгенерируется сам.
+  equippable:
+    slot: head
+    asset: ruby
+    equip-sound: item.armor.equip_diamond
+  attributes:
+    - attribute: armor
+      amount: 3
+      slot: head
+
+ruby_chestplate:
+  material: LEATHER_CHESTPLATE
+  name: "<#e0115f>Рубиновый нагрудник"
+  texture: item/ruby_chestplate
+  equippable:
+    slot: chest
+    asset: ruby
+  attributes:
+    - attribute: armor
+      amount: 7
+      slot: chest
+
+# Иконки для GUI — обычные предметы
+button_close:
+  name: "<red>Закрыть"
+  texture: item/button_close
+  hide-tooltip: false
+
+button_next:
+  name: "<green>Дальше"
+  texture: item/button_next
+
+# Предмет с ванильной моделью (ничего не генерируется): выглядит как алмаз
+shiny_coin:
+  material: GOLD_NUGGET
+  name: "<gold>Монета"
+  item-model: minecraft:sunflower
+  glint: true

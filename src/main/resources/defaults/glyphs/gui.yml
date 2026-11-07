@@ -1,0 +1,22 @@
+# Глифы — картинки внутри текста: фон окон, HUD, иконки в чате.
+# texture — путь в pack/assets/<namespace>/textures/ без .png
+# height  — высота отрисовки в пикселях (по умолчанию = высота картинки)
+# ascent  — насколько глиф поднят над базовой линией (не больше height)
+# Вставка в любой текст: <glyph:id>
+
+# Фон окна на 6 рядов: картинка 176×222, ascent 13 совмещает её верх с верхом окна.
+menu:
+  texture: gui/menu
+  height: 222
+  ascent: 13
+
+heart:
+  texture: hud/heart
+  height: 9
+  ascent: 8
+
+# Иконка рубина для чата/лора: <glyph:ruby_icon>
+ruby_icon:
+  texture: item/ruby
+  height: 8
+  ascent: 7

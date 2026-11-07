@@ -1,0 +1,28 @@
+# Мебель: item_display с моделью + хитбокс.
+# Поставить: ПКМ предметом по блоку. Сломать: ЛКМ по мебели. Сесть: ПКМ.
+
+chair:
+  name: "<gold>Деревянный стул"
+  model: furniture/chair         # pack/assets/atelier/models/furniture/chair.json
+  rotation-step: 45              # шаг поворота при установке (90, 45, ...)
+  hitbox:
+    type: interaction            # interaction (ширина/высота) | barrier (твёрдые блоки) | none
+    width: 0.8
+    height: 1.2
+  seat:
+    height: 0.55                 # высота сидения над полом
+  sounds:
+    place: block.wood.place
+    break: block.wood.break
+
+table:
+  name: "<gold>Деревянный стол"
+  model: furniture/table
+  hitbox:
+    type: barrier                # барьер — по столу можно ходить и ставить на него предметы
+    blocks:
+      - [0, 0, 0]
+  display:
+    transform: none
+    scale: 1.0
+    translation: [0, 0, 0]

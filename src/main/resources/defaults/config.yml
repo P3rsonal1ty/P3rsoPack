@@ -1,0 +1,55 @@
+# ┌────────────────────────────────────────────────────────────────────┐
+# │ Atelier — кастомные предметы, GUI, блоки и мебель                  │
+# │ После изменений: /atelier reload (пересоберёт и разошлёт пак)      │
+# └────────────────────────────────────────────────────────────────────┘
+config-version: 1
+
+# Пространство имён ресурспака. id без префикса (например "ruby") станут "atelier:ruby".
+# Текстуры/модели кладите в pack/assets/<namespace>/...
+namespace: atelier
+
+pack:
+  description: "Atelier resource pack"
+
+  hosting:
+    # self     — встроенный HTTP-сервер плагина раздаёт пак (по умолчанию)
+    # external — пак лежит на вашем хостинге/CDN (external-url); удобно для сети за Velocity
+    # none     — не раздавать (пак отправляет прокси или другой плагин; файл: output/pack.zip)
+    mode: self
+    bind-address: 0.0.0.0
+    port: 8164
+    # Адрес, по которому игроки скачивают пак. Пусто = тот адрес, по которому игрок зашёл на сервер.
+    # Примеры: "play.example.com", "1.2.3.4:8164", "https://pack.example.com"
+    public-address: ""
+    # Для mode: external
+    external-url: ""
+    # SHA-1 внешнего файла. Пусто = SHA-1 собранного здесь пака (если залили именно output/pack.zip).
+    external-sha1: ""
+
+  send:
+    # configuration — пак грузится ДО входа в мир (рекомендуется)
+    # join          — после входа
+    # none          — не отправлять
+    phase: configuration
+    # true — без пака на сервер не пустит
+    required: false
+    # Текст в окне запроса пака (MiniMessage). Пусто — стандартный.
+    prompt: "<gold>Установите ресурспак сервера — без него не будет видно предметов и интерфейсов"
+    timeout-seconds: 60
+    # После /atelier reload отправить новый пак игрокам онлайн (если он изменился)
+    resend-on-reload: true
+
+gui:
+  # Сдвиг фона окна влево в пикселях (текст заголовка начинается с x=8).
+  default-background-offset: -8
+
+# Постоянный HUD в action bar. Поддерживает <glyph:id>, <shift:N>, %player%.
+hud:
+  enabled: false
+  text: "<glyph:heart> <red>%player%"
+  interval-ticks: 20
+
+blocks:
+  # Ванильные нотные блоки принудительно ставятся в «нейтральное» состояние и не меняют ноту по ПКМ —
+  # иначе они могли бы совпасть с состоянием кастомного блока.
+  reset-vanilla-note-blocks: true

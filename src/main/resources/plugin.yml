@@ -1,0 +1,11 @@
+name: Atelier
+version: '${version}'
+main: dev.atelier.AtelierPlugin
+api-version: '26.3'
+folia-supported: true
+description: Кастомные предметы, GUI, блоки и мебель через автоматически собираемый ресурспак
+website: https://github.com/
+permissions:
+  atelier.admin:
+    description: Доступ к /atelier
+    default: op

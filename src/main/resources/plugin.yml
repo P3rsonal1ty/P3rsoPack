@@ -5,7 +5,7 @@ api-version: '26.3'
 folia-supported: true
 author: P3rso
 description: Кастомные предметы, GUI, блоки и мебель через автоматически собираемый ресурспак
-website: https://github.com/
+website: https://github.com/P3rsonal1ty/P3rsoPack
 permissions:
   p3rsopack.admin:
     description: Доступ к /p3rsopack

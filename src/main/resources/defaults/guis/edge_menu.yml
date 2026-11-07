@@ -1,32 +1,28 @@
 # ┌────────────────────────────────────────────────────────────────────────┐
 # │ Меню со вкладками: /menu                                               │
-# │ Вкладки — у ЛЕВОГО КРАЯ экрана, содержимое — ПО ЦЕНТРУ экрана.         │
+# │ Окно по центру экрана: вкладки слева, содержимое вкладки справа.       │
 # │ type: edge — диалог (клиент 1.21.6+), без модов и шейдеров.            │
 # └────────────────────────────────────────────────────────────────────────┘
-# Как это работает:
-#  • вкладки — кликабельный текст шире экрана в теле диалога: такой текст клиент прижимает к левому краю;
-#  • панель вкладки — картинка в заголовке диалога: заголовок клиент центрирует по экрану,
-#    а отрицательный ascent (content-offset) опускает картинку из шапки в середину экрана;
-#  • buttons — обычные кнопки диалога внизу по центру (не больше двух на вкладку);
-#  • нажатие на вкладку меняет панель и подсветку, меню при этом не закрывается.
+# Как это работает: тело диалога — кликабельный текст, каждый элемент меню — картинка внутри
+# текста с действием на клик. Строки текста уже экрана, поэтому клиент ставит меню по центру
+# (position: left — прижать к левому краю). Нажатие на вкладку меняет панель, меню не закрывается.
 #
-# Картинки вкладок и панелей рисуются при сборке пака (надписи — заглавными, своим пиксельным шрифтом).
-# Своя картинка: положите PNG по пути pack/assets/p3rso/textures/gui/edge/edge_menu/<content_вкладка|tab_вкладка>.png
+# Картинки вкладок, панелей и кнопок рисуются при сборке пака (надписи — заглавными, своим
+# пиксельным шрифтом). Своя картинка: PNG с тем же именем в pack/assets/p3rso/textures/gui/edge/edge_menu/
 #
+# width × height — размер окна (до 470 px по ширине, чтобы влезать при масштабе интерфейса 4).
 # Вкладка:
-#   label, icon, style/color          — кнопка слева
-#   name, lore                        — подсказка при наведении
-#   content: {label, subtitle, text: [...], icon, icon-scale, style/color} — панель по центру
-#   buttons: [{label, tooltip, width, actions}]  — кнопки внизу
-#   actions: [...]                    — для вкладки без content: что сделать при нажатии
+#   label, icon, style/color — кнопка слева; name, lore — подсказка при наведении
+#   content: {label, subtitle, text: [...], icon, icon-scale, style/color} — панель справа
+#   buttons: [{label, icon, style/color, width, name, lore, actions}] — кнопки на панели внизу
+#   actions: [...] — для вкладки без content: что сделать при нажатии
 
 edge_menu:
   type: edge
   command: menu
-  tab-width: 100
-  content-width: 200
-  content-height: 150
-  content-offset: -24              # ascent панели: меньше — ниже на экране
+  width: 460
+  height: 180
+  tab-width: 112
   tabs:
     home:
       label: "Главная"
@@ -44,8 +40,10 @@ edge_menu:
           - ""
           - "ПРИЯТНОЙ ИГРЫ!"
       buttons:
-        - label: "<green>▶ Играть"
-          tooltip: "<gray>Перейти в RPG мир"
+        - label: "Играть"
+          icon: item/icon_rpg
+          style: success
+          name: "<green>Перейти в RPG мир"
           actions: ["close", "command: play"]     # у P3rsoNet это /play
 
     rpg:
@@ -64,7 +62,9 @@ edge_menu:
           - ""
           - "ОНЛАЙН КАЖДЫЙ ВЕЧЕР"
       buttons:
-        - label: "<green>▶ Играть"
+        - label: "Играть"
+          icon: item/icon_rpg
+          style: success
           actions: ["sound: entity.player.levelup 0.6 1.4", "close", "command: play"]
 
     games:
@@ -83,7 +83,8 @@ edge_menu:
           - "• СПЛИФ"
           - "• БИТВА СТРОИТЕЛЕЙ"
       buttons:
-        - label: "<gray>Напомнить"
+        - label: "Напомнить"
+          style: primary
           actions: ["sound: block.note_block.pling 0.6 0.8", "actionbar: <#c9b6ff>Сообщим, когда откроются!"]
 
     news:
@@ -121,7 +122,8 @@ edge_menu:
           - "7 ДНЕЙ ПОДРЯД —"
           - "РЕДКИЙ СУНДУК!"
       buttons:
-        - label: "<gold>Забрать"
+        - label: "Забрать"
+          icon: item/icon_gift
           actions:
             - "sound: entity.player.levelup 0.5 1.8"
             - "actionbar: <#ffd36e><glyph:star> Награда будет доступна завтра"
@@ -159,7 +161,8 @@ edge_menu:
           - "(ПРИМЕР — ТОЛЬКО"
           - "ДЛЯ АДМИНОВ)"
       buttons:
-        - label: "<gold>Открыть лавку"
+        - label: "Открыть лавку"
+          icon: item/icon_shop
           actions: ["sound: ui.button.click", "open: shop"]
 
     items:

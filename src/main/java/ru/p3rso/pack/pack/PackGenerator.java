@@ -348,27 +348,25 @@ public final class PackGenerator {
 
     // ------------------------------------------------------------------ edge menus
 
-    /** Картинки меню у края экрана: фон и элементы с автоматическим артом (свои PNG в pack/ не трогаем). */
+    /** Картинки меню на диалоге: фон, вкладки, панели, кнопки (свои PNG в pack/ не трогаем). Широкие режутся на куски. */
     private void generateEdgeArt(Definitions defs) {
         for (var gui : defs.guis().values()) {
             if (!gui.isEdge()) continue;
             var edge = gui.edge();
-            if (edge.backgroundGlyph() != null) {
-                GlyphDef bg = defs.glyphs().get(edge.backgroundGlyph());
-                String path = Ids.asset(bg.texture(), "textures", ".png");
-                if (!userFiles.contains(path) && bg.texture().contains(":gui/edge/")) {
-                    files.put(path, png(EdgeArt.background(edge.width(), bg.height())));
-                } else if (!files.containsKey(path)) {
-                    problems.error(gui.source(), "фон меню: нет файла pack/" + path);
-                }
-            }
-            List<ru.p3rso.pack.model.EdgeLayout.Element> all = new java.util.ArrayList<>(edge.elements());
+            List<ru.p3rso.pack.model.EdgeLayout.Element> all = new java.util.ArrayList<>();
+            if (edge.background() != null) all.add(edge.background());
+            all.addAll(edge.elements());
             all.addAll(edge.extraArt());
+            for (var t : edge.tabs()) all.addAll(t.content());
             for (var e : all) {
-                String path = Ids.asset(e.texture(), "textures", ".png");
-                if (userFiles.contains(path)) continue;          // своя картинка
+                boolean own = true;
+                for (int i = 0; i < e.tiles(); i++) own &= userFiles.contains(Ids.asset(e.tileTexture(i), "textures", ".png"));
+                if (own) continue;                                   // свои картинки
                 if (e.art() == null) {
-                    if (!files.containsKey(path)) problems.error(e.source(), "элемент '" + e.key() + "': нет файла pack/" + path);
+                    for (int i = 0; i < e.tiles(); i++) {
+                        String path = Ids.asset(e.tileTexture(i), "textures", ".png");
+                        if (!files.containsKey(path)) problems.error(e.source(), "'" + e.key() + "': нет файла pack/" + path);
+                    }
                     continue;
                 }
                 java.awt.image.BufferedImage icon = null;
@@ -376,12 +374,12 @@ public final class PackGenerator {
                     String ip = Ids.asset(e.art().icon(), "textures", ".png");
                     byte[] data = files.get(ip);
                     if (data == null) {
-                        problems.error(e.source(), "элемент '" + e.key() + "': иконка '" + e.art().icon() + "' не найдена (pack/" + ip + ")");
+                        problems.error(e.source(), "'" + e.key() + "': иконка '" + e.art().icon() + "' не найдена (pack/" + ip + ")");
                     } else {
                         try {
                             icon = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(data));
                         } catch (IOException ex) {
-                            problems.error(e.source(), "элемент '" + e.key() + "': не удалось прочитать иконку: " + ex.getMessage());
+                            problems.error(e.source(), "'" + e.key() + "': не удалось прочитать иконку: " + ex.getMessage());
                         }
                     }
                 }
@@ -396,10 +394,15 @@ public final class PackGenerator {
                     }
                 }
                 if (e.kind() == ru.p3rso.pack.model.EdgeLayout.Kind.BUTTON && EdgeArt.buttonLabelRight(e) > e.width()) {
-                    problems.warn(e.source(), "элемент '" + e.key() + "': надпись «" + e.art().label() + "» не влезает в кнопку шириной "
+                    problems.warn(e.source(), "'" + e.key() + "': надпись «" + e.art().label() + "» не влезает в кнопку шириной "
                             + e.width() + " px — нужно ~" + EdgeArt.buttonLabelRight(e) + " px (увеличьте width или сократите надпись)");
                 }
-                files.put(path, png(EdgeArt.render(e, icon)));
+                java.awt.image.BufferedImage img = e.kind() == ru.p3rso.pack.model.EdgeLayout.Kind.BACKGROUND
+                        ? EdgeArt.background(e.width(), e.height()) : EdgeArt.render(e, icon);
+                for (int i = 0; i < e.tiles(); i++) {
+                    java.awt.image.BufferedImage tile = e.tiles() == 1 ? img : img.getSubimage(e.tileX(i), 0, e.tileWidth(i), e.height());
+                    files.put(Ids.asset(e.tileTexture(i), "textures", ".png"), png(tile));
+                }
             }
         }
     }

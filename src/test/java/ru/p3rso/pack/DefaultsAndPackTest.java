@@ -116,29 +116,36 @@ class DefaultsAndPackTest {
         assertEquals(java.util.List.of(), problems.all());
         var edge = r.resolved().guis().get("p3rso:edge_menu").edge();
         assertTrue(edge.hasTabs());
+        assertTrue(edge.centered(), "окно со вкладками — по центру экрана");
         assertEquals("home", edge.defaultTab().key());
-        for (String f : java.util.List.of("tab_home", "tab_home_active", "content_home", "tab_close", "background")) {
-            assertTrue(r.files().containsKey("assets/p3rso/textures/gui/edge/edge_menu/" + f + ".png"), f);
-        }
-        assertFalse(r.files().containsKey("assets/p3rso/textures/gui/edge/edge_menu/content_close.png"), "у «Закрыть» нет панели");
-        GlyphDef tab = r.resolved().glyphs().get("p3rso:edge/edge_menu/tab/home");
-        assertEquals(7, tab.ascent(), "первая вкладка y=9 — верх строки");
-        assertEquals(101, tab.advance(), "вкладка 100 px + 1");
-        GlyphDef content = r.resolved().glyphs().get("p3rso:edge/edge_menu/content/home");
-        assertEquals(-24, content.ascent(), "content-offset");
-        assertEquals(150, content.height());
-        var rows = edge.rows(id -> r.resolved().glyphs().get(id).advance(),
+        String dir = "assets/p3rso/textures/gui/edge/edge_menu/";
+        assertTrue(r.files().containsKey(dir + "tab_home.png"));
+        assertTrue(r.files().containsKey(dir + "tab_home_active.png"));
+        assertTrue(r.files().containsKey(dir + "content_home_t0.png"), "панель 324 px режется на куски ≤ 240");
+        assertTrue(r.files().containsKey(dir + "content_home_t1.png"));
+        assertTrue(r.files().containsKey(dir + "content_home_b0.png"), "кнопка «Играть» на панели");
+        assertTrue(r.files().containsKey(dir + "background_t0.png"));
+        GlyphDef bg = r.resolved().glyphs().get("p3rso:edge/edge_menu/background_t0");
+        assertEquals(13, bg.ascent(), "фон на 6 px выше первой строки — перекрывает рамку фокуса");
+        var visible = edge.visible("home");
+        var rows = edge.rows(visible, id -> r.resolved().glyphs().get(id).advance(),
                 java.util.Map.of("tab.home", edge.tab("home").activeGlyph()));
         for (var row : rows) {
-            assertEquals(ru.p3rso.pack.model.EdgeLayout.LINE_WIDTH,
-                    row.stream().mapToInt(ru.p3rso.pack.model.EdgeLayout.Segment::advance).sum());
+            assertEquals(460, row.stream().mapToInt(ru.p3rso.pack.model.EdgeLayout.Segment::advance).sum(),
+                    "все строки шириной окна — клиент центрирует текст уже экрана");
         }
-        // вкладка «Главная»: строка 2 — подсвеченная картинка, строка 3 — кликабельный пробел
-        var g = rows.get(2).stream().filter(s -> s.element() != null && s.element().key().equals("tab.home")).findFirst().orElseThrow();
+        // вкладка «Главная» y=9: строка 1 — подсвеченная картинка, строка 2 — кликабельный пробел
+        var g = rows.get(1).stream().filter(s -> s.element() != null && s.element().key().equals("tab.home")).findFirst().orElseThrow();
         assertEquals("p3rso:edge/edge_menu/tab/home_active", g.glyph());
-        var c = rows.get(3).stream().filter(s -> s.element() != null && s.element().key().equals("tab.home")).findFirst().orElseThrow();
+        var c = rows.get(2).stream().filter(s -> s.element() != null && s.element().key().equals("tab.home")).findFirst().orElseThrow();
         assertEquals(ru.p3rso.pack.model.EdgeLayout.SegmentType.CLICK_SHIFT, c.type());
-        // «Закрыть» — вкладка без панели, просто действия
+        // кнопка на панели кликабельна и стоит на строках ниже первой строки панели
+        var btn = edge.tab("home").content().get(1);
+        assertTrue(btn.clickable());
+        var btnRow = rows.get(btn.firstLine()).stream().filter(s -> s.element() == btn).findFirst().orElseThrow();
+        assertEquals(ru.p3rso.pack.model.EdgeLayout.SegmentType.GLYPH, btnRow.type());
+        // строка кнопки: панель (некликабельная) на ней не занимает места — клик попадает в кнопку
+        assertTrue(rows.get(btn.firstLine()).stream().noneMatch(s -> s.element() != null && s.element().key().equals("content.home")));
         assertTrue(edge.tab("close").actions().stream().anyMatch(a -> a.type() == ru.p3rso.pack.model.GuiDef.Action.Type.CLOSE));
     }
 

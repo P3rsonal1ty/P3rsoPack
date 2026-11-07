@@ -185,14 +185,18 @@ class ConfigErrorsTest {
         Problems p = load("guis", "e.yml", """
                 m:
                   type: edge
+                  width: 400
                   elements:
-                    a: {x: 0, y: 10, width: 60, label: "A"}
-                    b: {x: 50, y: 20, width: 60, label: "B"}
-                    c: {x: 50, y: 27, width: 60, label: "C"}
+                    a: {x: 0, y: 10, width: 60, label: "A", actions: [close]}
+                    b: {x: 50, y: 20, width: 60, label: "B", actions: [close]}
+                    c: {x: 50, y: 27, width: 60, label: "C", actions: [close]}
                     d: {kind: blob, x: 0, y: 100}
+                    panel: {kind: panel, x: 200, y: 9, width: 100, height: 60}
+                    onpanel: {x: 210, y: 36, width: 50, label: "OK", actions: [close]}
                 """);
         List<String> msgs = p.all().stream().map(Problems.Problem::describe).toList();
         assertEquals(3, msgs.size(), msgs::toString);
+        assertTrue(msgs.stream().noneMatch(m -> m.contains("onpanel")), "кнопка поверх некликабельной панели ниже её первой строки — можно");
         assertTrue(msgs.stream().anyMatch(m -> m.contains("неизвестный kind 'blob'")), msgs::toString);
         assertTrue(msgs.stream().anyMatch(m -> m.contains("'b' перекрывается с 'a'")), msgs::toString);
         assertTrue(msgs.stream().anyMatch(m -> m.contains("'c' перекрывается с 'b'")), msgs::toString);

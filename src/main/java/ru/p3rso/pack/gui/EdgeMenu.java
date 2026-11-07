@@ -53,9 +53,10 @@ final class EdgeMenu {
         Map<String, GlyphDef> glyphs = plugin.state().defs().glyphs();
         var text = plugin.text();
         EdgeLayout.Tab current = tabKey == null ? null : edge.tab(tabKey);
+        List<EdgeLayout.Element> visible = edge.visible(current == null ? null : current.key());
         Map<String, ClickEvent> clicks = new HashMap<>();
         Map<String, HoverEvent<Component>> hovers = new HashMap<>();
-        for (EdgeLayout.Element e : edge.elements()) {
+        for (EdgeLayout.Element e : visible) {
             if (e.tab() != null) {
                 String target = e.tab();
                 clicks.put(e.key(), callback(player, p -> {
@@ -65,7 +66,14 @@ final class EdgeMenu {
                 }));
             } else if (e.clickable()) {
                 List<GuiDef.Action> actions = e.actions();
-                clicks.put(e.key(), callback(player, p -> guis.run(p, null, actions)));
+                boolean stays = actions.stream().noneMatch(a -> a.type() == GuiDef.Action.Type.CLOSE || a.type() == GuiDef.Action.Type.OPEN
+                        || a.type() == GuiDef.Action.Type.COMMAND || a.type() == GuiDef.Action.Type.CONSOLE);
+                String keep = current == null ? null : current.key();
+                clicks.put(e.key(), callback(player, p -> {
+                    guis.run(p, null, actions);
+                    // меню остаётся открытым: перерисуем его, чтобы снять фокус с нажатого текста
+                    if (stays && edge.hasTabs()) show(p, def, keep);
+                }));
             }
             if (e.name() != null || !e.lore().isEmpty()) {
                 List<Component> tip = new ArrayList<>();
@@ -78,7 +86,7 @@ final class EdgeMenu {
         if (current != null && current.activeGlyph() != null) override.put("tab." + current.key(), current.activeGlyph());
 
         List<Component> lines = new ArrayList<>();
-        for (List<EdgeLayout.Segment> row : edge.rows(id -> {
+        for (List<EdgeLayout.Segment> row : edge.rows(visible, id -> {
             GlyphDef g = glyphs.get(id);
             return g == null ? 0 : g.advance();
         }, override)) {
@@ -99,48 +107,19 @@ final class EdgeMenu {
             lines.add(line);
         }
         Component body = Component.join(JoinConfiguration.newlines(), lines);
-
-        // заголовок диалога клиент центрирует по экрану — в нём панель выбранной вкладки
-        Component title = Component.text(" ");
-        if (current != null && current.contentGlyph() != null) {
-            GlyphDef cg = glyphs.get(current.contentGlyph());
-            if (cg != null) title = glyph(cg);
-        }
-
-        List<ActionButton> buttons = new ArrayList<>();
-        if (current != null) {
-            for (EdgeLayout.FooterButton b : current.buttons()) {
-                List<GuiDef.Action> actions = b.actions();
-                ActionButton.Builder ab = ActionButton.builder(text.parse(b.label(), player)).width(b.width())
-                        .action(io.papermc.paper.registry.data.dialog.action.DialogAction.customClick(
-                                (view, audience) -> {
-                                    if (audience instanceof Player p) p.getScheduler().run(plugin, t -> guis.run(p, null, actions), null);
-                                }, ClickCallback.Options.builder().uses(ClickCallback.UNLIMITED_USES).lifetime(Duration.ofMinutes(30)).build()));
-                if (b.tooltip() != null) ab.tooltip(text.parse(b.tooltip(), player));
-                buttons.add(ab.build());
-            }
-        }
-        DialogType type;
-        if (buttons.size() == 2) {
-            type = DialogType.confirmation(buttons.get(0), buttons.get(1));
-        } else if (buttons.size() == 1) {
-            type = DialogType.notice(buttons.getFirst());
-        } else if (edge.closeButton() || edge.hasTabs()) {
-            type = DialogType.notice(ActionButton.builder(Component.translatable("gui.done")).width(100)
+        ActionButton footer = edge.closeButton()
+                ? ActionButton.builder(Component.translatable("gui.done")).width(100)
                     .action(io.papermc.paper.registry.data.dialog.action.DialogAction.customClick(
                             (view, audience) -> { if (audience instanceof Player p) p.getScheduler().run(plugin, t -> p.closeDialog(), null); },
                             ClickCallback.Options.builder().uses(ClickCallback.UNLIMITED_USES).lifetime(Duration.ofMinutes(30)).build()))
-                    .build());
-        } else {
-            type = DialogType.notice(ActionButton.builder(Component.empty()).width(1).build());
-        }
+                    .build()
+                : ActionButton.builder(Component.empty()).width(1).build();
         // NONE: при переключении вкладки сервер сразу присылает новый диалог, без мигания
         DialogBase.DialogAfterAction after = edge.hasTabs() ? DialogBase.DialogAfterAction.NONE : DialogBase.DialogAfterAction.CLOSE;
-        Component finalTitle = title;
         Dialog dialog = Dialog.create(f -> f.empty()
-                .base(DialogBase.builder(finalTitle).canCloseWithEscape(true).pause(false).afterAction(after)
+                .base(DialogBase.builder(Component.text(" ")).canCloseWithEscape(true).pause(false).afterAction(after)
                         .body(List.of(DialogBody.plainMessage(body, 1024))).build())
-                .type(type));
+                .type(DialogType.notice(footer)));
         player.showDialog(dialog);
     }
 

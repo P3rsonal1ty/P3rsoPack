@@ -127,6 +127,15 @@ class DefaultsAndPackTest {
         assertTrue(textVsh.contains("const float PANEL_W[MENUS] = float[](320.0);"), "размер панели зашит в шейдер");
         assertTrue(textVsh.contains("#include <minecraft:projection.glsl>"));
         assertEquals(textVsh.chars().filter(ch -> ch == '{').count(), textVsh.chars().filter(ch -> ch == '}').count(), "скобки GLSL сбалансированы");
+        // зарезервированные слова GLSL 3.30 нельзя использовать как имена — иначе клиент не загрузит ресурсы
+        java.util.Set<String> reserved = java.util.Set.of("half", "fixed", "input", "output", "filter", "sizeof", "cast", "namespace",
+                "using", "long", "short", "double", "unsigned", "public", "static", "extern", "external", "interface", "class", "union",
+                "enum", "typedef", "template", "this", "packed", "goto", "inline", "noinline", "volatile", "superp", "hvec2", "hvec3",
+                "hvec4", "fvec2", "fvec3", "fvec4", "sampler3DRect", "active", "common", "partition", "asm", "row_major", "resource");
+        for (String shader : java.util.List.of("assets/minecraft/shaders/core/text.vsh", "assets/minecraft/shaders/core/gui.vsh")) {
+            String src = new String(r.files().get(shader), StandardCharsets.UTF_8).replaceAll("//[^\\n]*", "");
+            for (String word : src.split("[^A-Za-z0-9_]+")) assertFalse(reserved.contains(word), shader + ": зарезервированное слово GLSL '" + word + "'");
+        }
         var panel = edge.tab("home").titlePanel();
         assertNotNull(panel);
         assertEquals(2, panel.tiles(), "панель 320 px — два куска по 160");

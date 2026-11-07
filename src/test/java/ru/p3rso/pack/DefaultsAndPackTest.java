@@ -68,9 +68,10 @@ class DefaultsAndPackTest {
         assertTrue(defs.items().containsKey("p3rso:ruby_ore"), "у блока есть авто-предмет");
         assertTrue(defs.items().containsKey("p3rso:chair"), "у мебели есть авто-предмет");
         assertEquals(ItemDef.Placement.Type.BLOCK, defs.items().get("p3rso:ruby_ore").placement().type());
-        assertEquals(5, defs.guis().size());
+        assertEquals(6, defs.guis().size());
         assertEquals("cmenu", defs.guis().get("p3rso:main_menu").command());
-        assertEquals("menu", defs.guis().get("p3rso:hub_menu").command());
+        assertEquals("fmenu", defs.guis().get("p3rso:hub_menu").command());
+        assertEquals("menu", defs.guis().get("p3rso:edge_menu").command());
         assertEquals("p3rsopack.admin", defs.guis().get("p3rso:collection").permission());
         // якоря YAML: вся карточка кликается как иконка
         var main = defs.guis().get("p3rso:main_menu");
@@ -104,6 +105,37 @@ class DefaultsAndPackTest {
         assertEquals("", json(r, "assets/minecraft/lang/ru_ru.json").get("container.inventory").getAsString());
         assertEquals("", json(r, "assets/minecraft/lang/en_us.json").get("container.inventory").getAsString());
         assertEquals(241, r.resolved().glyphs().get("p3rso:hub_bg").advance());
+    }
+
+    private int defsGlyphCount() { return load().glyphs().size(); }
+
+    @Test
+    void edgeMenuRowsLineUpWithElements() throws Exception {
+        Definitions defs = load();
+        PackGenerator.Result r = build(defs);
+        assertEquals(java.util.List.of(), problems.all());
+        var edge = r.resolved().guis().get("p3rso:edge_menu").edge();
+        // картинки нарисованы и попали в шрифт
+        assertTrue(r.files().containsKey("assets/p3rso/textures/gui/edge/edge_menu/home.png"));
+        assertTrue(r.files().containsKey("assets/p3rso/textures/gui/edge/edge_menu/background.png"));
+        GlyphDef home = r.resolved().glyphs().get("p3rso:edge/edge_menu/home");
+        assertEquals(16, home.height());
+        assertEquals(7, home.ascent(), "y=36 кратен 9 → верх картинки на верху строки");
+        assertEquals(77, home.advance(), "кнопка 76 px + 1");
+        var rows = edge.rows(id -> r.resolved().glyphs().get(id).advance());
+        assertEquals(edge.totalLines(), rows.size());
+        for (var row : rows) {
+            int sum = row.stream().mapToInt(ru.p3rso.pack.model.EdgeLayout.Segment::advance).sum();
+            assertEquals(ru.p3rso.pack.model.EdgeLayout.LINE_WIDTH, sum, "каждая строка ровно LINE_WIDTH — иначе строки съедут");
+        }
+        // строка 0 — фон; кнопка «Главная» (y=36) начинается на строке 1 + 36/9 = 5 и продолжается кликабельным пробелом на 6
+        var r5 = rows.get(5).stream().filter(s -> s.element() != null && s.element().key().equals("home")).findFirst().orElseThrow();
+        assertEquals(ru.p3rso.pack.model.EdgeLayout.SegmentType.GLYPH, r5.type());
+        var r6 = rows.get(6).stream().filter(s -> s.element() != null && s.element().key().equals("home")).findFirst().orElseThrow();
+        assertEquals(ru.p3rso.pack.model.EdgeLayout.SegmentType.CLICK_SHIFT, r6.type());
+        assertEquals(77, r6.advance());
+        // у фона ascent −2 → его верх на строке 1
+        assertEquals(-2, r.resolved().glyphs().get("p3rso:edge/edge_menu/background").ascent());
     }
 
     @Test
@@ -176,7 +208,7 @@ class DefaultsAndPackTest {
         GlyphDef icon = r.resolved().glyphs().get("p3rso:ruby_icon");
         assertEquals(9, icon.advance(), "16 px при масштабе 8/16 = 8, +1");
         JsonObject font = json(r, "assets/p3rso/font/glyphs.json");
-        assertEquals(7, font.getAsJsonArray("providers").size());
+        assertEquals(defsGlyphCount(), font.getAsJsonArray("providers").size());
         JsonObject first = font.getAsJsonArray("providers").get(0).getAsJsonObject();
         assertEquals("bitmap", first.get("type").getAsString());
         JsonObject shift = json(r, "assets/p3rso/font/shift.json").getAsJsonArray("providers").get(0).getAsJsonObject();

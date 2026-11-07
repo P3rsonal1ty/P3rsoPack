@@ -181,6 +181,24 @@ class ConfigErrorsTest {
     }
 
     @Test
+    void edgeElementsOnSameLinesMustNotOverlap() throws Exception {
+        Problems p = load("guis", "e.yml", """
+                m:
+                  type: edge
+                  elements:
+                    a: {x: 0, y: 10, width: 60, label: "A"}
+                    b: {x: 50, y: 20, width: 60, label: "B"}
+                    c: {x: 50, y: 27, width: 60, label: "C"}
+                    d: {kind: blob, x: 0, y: 100}
+                """);
+        List<String> msgs = p.all().stream().map(Problems.Problem::describe).toList();
+        assertEquals(3, msgs.size(), msgs::toString);
+        assertTrue(msgs.stream().anyMatch(m -> m.contains("неизвестный kind 'blob'")), msgs::toString);
+        assertTrue(msgs.stream().anyMatch(m -> m.contains("'b' перекрывается с 'a'")), msgs::toString);
+        assertTrue(msgs.stream().anyMatch(m -> m.contains("'c' перекрывается с 'b'")), msgs::toString);
+    }
+
+    @Test
     void missingTextureReportedByGenerator() throws Exception {
         TestFiles.write(dir, "items/a.yml", "gem:\n  texture: item/nope\n");
         Problems p = new Problems();

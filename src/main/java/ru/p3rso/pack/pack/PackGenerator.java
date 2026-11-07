@@ -71,6 +71,7 @@ public final class PackGenerator {
         writeMcmeta();
         generateBlocks(defs, variations);
         for (ItemDef item : defs.items().values()) generateItem(item);
+        generateEdgeArt(defs);
         Map<String, GlyphDef> glyphs = generateFonts(defs);
         writeInvisibleItem();
         checkTooltipStyles(defs);
@@ -343,6 +344,68 @@ public final class PackGenerator {
         shiftFont.add("providers", sp);
         put("assets/" + ns + "/font/shift.json", shiftFont);
         return out;
+    }
+
+    // ------------------------------------------------------------------ edge menus
+
+    /** Картинки меню у края экрана: фон и элементы с автоматическим артом (свои PNG в pack/ не трогаем). */
+    private void generateEdgeArt(Definitions defs) {
+        for (var gui : defs.guis().values()) {
+            if (!gui.isEdge()) continue;
+            var edge = gui.edge();
+            if (edge.backgroundGlyph() != null) {
+                GlyphDef bg = defs.glyphs().get(edge.backgroundGlyph());
+                String path = Ids.asset(bg.texture(), "textures", ".png");
+                if (!userFiles.contains(path) && bg.texture().contains(":gui/edge/")) {
+                    files.put(path, png(EdgeArt.background(edge.width(), bg.height())));
+                } else if (!files.containsKey(path)) {
+                    problems.error(gui.source(), "фон меню: нет файла pack/" + path);
+                }
+            }
+            for (var e : edge.elements()) {
+                String path = Ids.asset(e.texture(), "textures", ".png");
+                if (userFiles.contains(path)) continue;          // своя картинка
+                if (e.art() == null) {
+                    if (!files.containsKey(path)) problems.error(e.source(), "элемент '" + e.key() + "': нет файла pack/" + path);
+                    continue;
+                }
+                java.awt.image.BufferedImage icon = null;
+                if (e.art().icon() != null) {
+                    String ip = Ids.asset(e.art().icon(), "textures", ".png");
+                    byte[] data = files.get(ip);
+                    if (data == null) {
+                        problems.error(e.source(), "элемент '" + e.key() + "': иконка '" + e.art().icon() + "' не найдена (pack/" + ip + ")");
+                    } else {
+                        try {
+                            icon = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(data));
+                        } catch (IOException ex) {
+                            problems.error(e.source(), "элемент '" + e.key() + "': не удалось прочитать иконку: " + ex.getMessage());
+                        }
+                    }
+                }
+                for (char c : e.art().label().toCharArray()) {
+                    if (!PixelFont.get().supports(c) && c != ' ') {
+                        problems.warn(e.source(), "элемент '" + e.key() + "': символ '" + c + "' нет в пиксельном шрифте — будет нарисован «?»");
+                        break;
+                    }
+                }
+                if (e.kind() == ru.p3rso.pack.model.EdgeLayout.Kind.BUTTON && EdgeArt.buttonLabelRight(e) > e.width()) {
+                    problems.warn(e.source(), "элемент '" + e.key() + "': надпись «" + e.art().label() + "» не влезает в кнопку шириной "
+                            + e.width() + " px — нужно ~" + EdgeArt.buttonLabelRight(e) + " px (увеличьте width или сократите надпись)");
+                }
+                files.put(path, png(EdgeArt.render(e, icon)));
+            }
+        }
+    }
+
+    private static byte[] png(java.awt.image.BufferedImage img) {
+        try {
+            var out = new ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(img, "png", out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     // ------------------------------------------------------------------ GUI helpers

@@ -40,7 +40,11 @@ public final class DefinitionLoader {
             "seats", "seat", "rotation-step", "drop", "sounds", "tooltip-style"));
     static final Set<String> GLYPH_KEYS = Set.of("texture", "height", "ascent", "char");
     static final Set<String> GUI_KEYS = Set.of("title", "rows", "background", "background-offset", "title-offset", "items", "open-actions",
-            "command", "permission", "hide-player-inventory", "buttons");
+            "command", "permission", "hide-player-inventory", "buttons", "type");
+    static final Set<String> EDGE_KEYS = Set.of("type", "command", "permission", "width", "height", "background",
+            "close-button", "elements");
+    static final Set<String> EDGE_ELEMENT_KEYS = Set.of("kind", "x", "y", "width", "height", "texture", "label", "subtitle",
+            "text", "icon", "icon-scale", "style", "color", "active", "pill", "name", "lore", "actions");
     static final Set<String> GUI_ITEM_KEYS = Set.of("slot", "slots", "item", "material", "amount", "name", "lore", "item-model",
             "tooltip-style", "actions", "left-actions", "right-actions", "shift-left-actions", "shift-right-actions", "middle-actions", "drop-actions");
     static final Set<String> GUI_BUTTON_KEYS = union(Set.of("x", "y", "width", "height", "icon-slot"),
@@ -447,6 +451,9 @@ public final class DefinitionLoader {
     // ------------------------------------------------------------------ guis
 
     private GuiDef parseGui(String id, YNode n) {
+        String type = n.string("type", "chest").toLowerCase(Locale.ROOT);
+        if (type.equals("edge")) return parseEdgeGui(id, n);
+        if (!type.equals("chest")) throw n.require("type").error("неизвестный тип окна '" + type + "', допустимо: chest, edge");
         n.checkKeys(GUI_KEYS, problems);
         int rows = n.integer("rows", 6, 1, 6);
         boolean hideInv = n.bool("hide-player-inventory", false);
@@ -479,17 +486,115 @@ public final class DefinitionLoader {
             pendingIcons.clear();
         }
         List<GuiDef.Action> open = n.has("open-actions") ? actions(n.require("open-actions")) : List.of();
-        String command = null;
-        if (n.has("command")) {
-            command = n.reqString("command").trim().toLowerCase(Locale.ROOT);
-            if (command.startsWith("/")) command = command.substring(1);
-            if (!command.matches("[a-z0-9_-]{1,32}")) throw n.require("command").error("команда — одно слово из a-z, 0-9, _ и -, например menu");
-            Source prev = guiCommands.putIfAbsent(command, n.source());
-            if (prev != null) throw n.require("command").error("команда /" + command + " уже открывает окно из " + prev);
-        }
+        String command = guiCommand(id, n);
         String permission = n.has("permission") ? n.reqString("permission").trim() : null;
         return new GuiDef(id, n.source(), n.string("title", ""), rows, bg, n.integer("background-offset", Integer.MIN_VALUE),
-                n.integer("title-offset", 0), List.copyOf(list), open, command, permission, hideInv);
+                n.integer("title-offset", 0), List.copyOf(list), open, command, permission, hideInv, null);
+    }
+
+    private String guiCommand(String id, YNode n) {
+        if (!n.has("command")) return null;
+        String command = n.reqString("command").trim().toLowerCase(Locale.ROOT);
+        if (command.startsWith("/")) command = command.substring(1);
+        if (!command.matches("[a-z0-9_-]{1,32}")) throw n.require("command").error("команда — одно слово из a-z, 0-9, _ и -, например menu");
+        Source prev = guiCommands.putIfAbsent(command, n.source());
+        if (prev != null) throw n.require("command").error("команда /" + command + " уже открывает окно из " + prev);
+        return command;
+    }
+
+    /** Меню у левого края экрана (диалог): холст с элементами по пикселям. */
+    private GuiDef parseEdgeGui(String id, YNode n) {
+        n.checkKeys(EDGE_KEYS, problems);
+        int width = n.integer("width", 250, 16, 512);
+        int height = n.integer("height", 198, 9, 256);
+        String path = Ids.path(id);
+        String ns0 = Ids.namespace(id);
+        List<EdgeLayout.Element> els = new ArrayList<>();
+        YNode en = n.require("elements");
+        if (!en.isMap()) throw en.error("elements — раздел вида { play: {kind: button, x: 6, y: 30, width: 76, height: 16, ...} }");
+        for (Map.Entry<String, YNode> e : en.entries().entrySet()) {
+            try {
+                els.add(parseEdgeElement(ns0, path, e.getKey(), e.getValue(), width));
+            } catch (ConfigException ex) {
+                problems.error(ex);
+            }
+        }
+        // элементы в одной строке текста не должны перекрываться по горизонтали — иначе клики попадут не туда
+        for (int i = 0; i < els.size(); i++) {
+            for (int j = i + 1; j < els.size(); j++) {
+                EdgeLayout.Element a = els.get(i), b = els.get(j);
+                boolean linesOverlap = a.firstLine() <= b.lastLine() && b.firstLine() <= a.lastLine();
+                boolean xOverlap = a.x() < b.x() + b.width() && b.x() < a.x() + a.width();
+                if (linesOverlap && xOverlap) {
+                    problems.error(b.source(), "элемент '" + b.key() + "' перекрывается с '" + a.key() + "': элементы, стоящие на одних строках"
+                            + " текста (по 9 px), не должны пересекаться по x. Сдвиньте по x или разнесите по y так, чтобы между ними была граница строки (y кратен 9)");
+                }
+            }
+        }
+        String bgGlyph = null;
+        String bg = n.string("background", "auto").trim();
+        if (!bg.equalsIgnoreCase("none")) {
+            int lines = (height + 8) / 9;
+            boolean auto = bg.equalsIgnoreCase("auto");
+            String tex = auto ? ns0 + ":gui/edge/" + path + "/background" : Ids.key(ns, bg, n.require("background"));
+            bgGlyph = ns0 + ":edge/" + path + "/background";
+            // фон стоит на строке 0, ascent −2 опускает его верх на строку 1 — начало холста
+            glyphs.put(bgGlyph, new GlyphDef(bgGlyph, n.source(), tex, lines * 9, -2, (char) 0, 0));
+        }
+        List<GuiDef.Action> none = List.of();
+        return new GuiDef(id, n.source(), "", 1, null, 0, 0, List.of(), none, guiCommand(id, n),
+                n.has("permission") ? n.reqString("permission").trim() : null, false,
+                new EdgeLayout(width, height, bgGlyph, List.copyOf(els), n.bool("close-button", false)));
+    }
+
+    private EdgeLayout.Element parseEdgeElement(String ns0, String guiPath, String key, YNode e, int canvasWidth) {
+        if (!e.isMap()) throw e.error("элемент меню — раздел с полями kind, x, y, width, height...");
+        if (!key.matches("[a-z0-9_.-]+")) throw e.error("имя элемента '" + key + "': только a-z, 0-9, _ . -");
+        e.checkKeys(EDGE_ELEMENT_KEYS, problems);
+        String kindName = e.string("kind", e.has("texture") ? "image" : "button").toLowerCase(Locale.ROOT);
+        EdgeLayout.Kind kind;
+        try {
+            kind = EdgeLayout.Kind.valueOf(kindName.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw e.require("kind").error("неизвестный kind '" + kindName + "', допустимо: button, panel, header, image");
+        }
+        int x = e.require("x").asInt(), y = e.require("y").asInt();
+        int defH = switch (kind) { case BUTTON -> 16; case HEADER -> 26; default -> 36; };
+        int w = e.integer("width", kind == EdgeLayout.Kind.BUTTON ? 76 : 120, 4, 512);
+        int h = e.integer("height", defH, 8, 256);
+        if (x < 0 || y < 0) throw e.error("x и y не могут быть отрицательными (0,0 — левый верхний угол меню)");
+        if (x + w > EdgeLayout.LINE_WIDTH - 20) throw e.error("элемент выходит за ширину строки");
+        if (x + w > canvasWidth) problems.warn(e.source(), "элемент '" + key + "' выходит за ширину холста (" + canvasWidth + " px) — фон его не накроет");
+        String glyph = ns0 + ":edge/" + guiPath + "/" + key;
+        String texture;
+        EdgeLayout.Art art = null;
+        if (e.has("texture")) {
+            texture = Ids.key(ns, e.reqString("texture"), e.require("texture"));
+        } else {
+            if (kind == EdgeLayout.Kind.IMAGE) throw e.error("для kind: image укажите texture");
+            texture = ns0 + ":gui/edge/" + guiPath + "/" + key;
+            int[][] colors = EdgeLayout.STYLES.get("default");
+            String style = e.string("style", kind == EdgeLayout.Kind.PANEL ? "dark" : "default").toLowerCase(Locale.ROOT);
+            if (e.has("color")) {
+                String hex = e.reqString("color").trim();
+                if (!hex.matches("#?[0-9a-fA-F]{6}")) throw e.require("color").error("color — цвет вида \"#5a4aa0\"");
+                int v = Integer.parseInt(hex.replace("#", ""), 16);
+                int[] top = {v >> 16 & 255, v >> 8 & 255, v & 255};
+                colors = new int[][]{top, {top[0] * 45 / 100, top[1] * 45 / 100, top[2] * 45 / 100}};
+            } else {
+                colors = EdgeLayout.STYLES.get(style);
+                if (colors == null) throw e.require("style").error("неизвестный style '" + style + "', допустимо: "
+                        + String.join(", ", new java.util.TreeSet<>(EdgeLayout.STYLES.keySet())) + " (или color: \"#rrggbb\")");
+            }
+            String icon = e.has("icon") ? Ids.key(ns, e.reqString("icon"), e.require("icon")) : null;
+            art = new EdgeLayout.Art(e.string("label", ""), e.string("subtitle", null), e.stringList("text"), icon,
+                    colors[0], colors[1], e.bool("active", false), e.string("pill", null), e.integer("icon-scale", kind == EdgeLayout.Kind.PANEL ? 2 : 1, 1, 4));
+        }
+        List<GuiDef.Action> acts = e.has("actions") ? actions(e.require("actions")) : List.of();
+        EdgeLayout.Element el = new EdgeLayout.Element(key, e.source(), kind, x, y, w, h, glyph, texture, art,
+                e.string("name", null), e.stringList("lore"), acts);
+        glyphs.put(glyph, new GlyphDef(glyph, e.source(), texture, h, EdgeLayout.ascentFor(y), (char) 0, 0));
+        return el;
     }
 
     /** Невидимая модель для кнопок-областей (генерируется в паке всегда). */
@@ -627,6 +732,7 @@ public final class DefinitionLoader {
                 it.actions().values().forEach(this::checkActions);
             }
             checkActions(g.openActions());
+            if (g.isEdge()) for (EdgeLayout.Element e : g.edge().elements()) checkActions(e.actions());
         }
         for (BlockDef b : blocks.values()) {
             for (BlockDef.Drop d : b.drops()) {

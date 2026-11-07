@@ -23,10 +23,12 @@ import java.util.List;
 public final class GuiManager {
     private final P3rsoPackPlugin plugin;
     private final InventoryBackup backup;
+    private final EdgeMenu edge;
 
     public GuiManager(P3rsoPackPlugin plugin) {
         this.plugin = plugin;
         this.backup = new InventoryBackup(plugin);
+        this.edge = new EdgeMenu(plugin, this);
     }
 
     public InventoryBackup backup() { return backup; }
@@ -40,7 +42,8 @@ public final class GuiManager {
             player.playSound(Sound.sound(Key.key("entity.villager.no"), Sound.Source.MASTER, 1f, 1f));
             return false;
         }
-        player.getScheduler().run(plugin, t -> openNow(player, def), null);
+        if (def.isEdge()) player.getScheduler().run(plugin, t -> edge.show(player, def), null);
+        else player.getScheduler().run(plugin, t -> openNow(player, def), null);
         return true;
     }
 
@@ -135,7 +138,8 @@ public final class GuiManager {
         run(player, holder, list);
     }
 
-    private void run(Player player, GuiHolder holder, List<GuiDef.Action> actions) {
+    /** holder == null — действие из меню у края экрана (диалога). */
+    void run(Player player, GuiHolder holder, List<GuiDef.Action> actions) {
         var text = plugin.text();
         for (GuiDef.Action a : actions) {
             String v = a.value().replace("%player%", player.getName());
@@ -146,9 +150,12 @@ public final class GuiManager {
                 case MESSAGE -> player.sendMessage(text.parse(a.value(), player));
                 case ACTIONBAR -> player.sendActionBar(text.parse(a.value(), player));
                 case OPEN -> open(player, v.split("\\s+")[0]);
-                case CLOSE -> player.getScheduler().run(plugin, t -> player.closeInventory(), null);
+                case CLOSE -> player.getScheduler().run(plugin, t -> {
+                    if (holder != null) player.closeInventory();
+                    else player.closeDialog();
+                }, null);
                 case REFRESH -> player.getScheduler().run(plugin, t -> {
-                    if (player.getOpenInventory().getTopInventory().getHolder(false) == holder) fill(holder, player);
+                    if (holder != null && player.getOpenInventory().getTopInventory().getHolder(false) == holder) fill(holder, player);
                 }, null);
                 case SOUND -> {
                     String[] p = v.split("\\s+");

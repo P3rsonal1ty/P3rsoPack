@@ -18,7 +18,11 @@ public record GuiDef(
         List<Action> openActions,
         String command,
         String permission,
-        boolean hidePlayerInventory) {
+        boolean hidePlayerInventory,
+        EdgeLayout edge) {
+
+    /** Меню у края экрана (диалог), а не окно-сундук. */
+    public boolean isEdge() { return edge != null; }
 
     /** Слоты нижней части окна (инвентарь игрока): rows·9 + 0..26 — три ряда сверху вниз, rows·9 + 27..35 — хотбар. */
     public int topSize() { return rows * 9; }

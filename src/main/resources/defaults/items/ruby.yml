@@ -1,13 +1,13 @@
-# Каждый раздел верхнего уровня — один предмет. Имя раздела = id предмета (atelier:<имя>).
-# Выдать: /atelier give @s ruby
+# Каждый раздел верхнего уровня — один предмет. Имя раздела = id предмета (p3rso:<имя>).
+# Выдать: /p3rsopack give @s ruby
 
 ruby:
   material: PAPER                # базовый предмет (поведение: стак, еда и т.д.)
   name: "<#e0115f>Рубин"         # MiniMessage
   lore:
     - "Драгоценный камень"
-    - "<dark_gray>Пример предмета Atelier"
-  # Текстура pack/assets/atelier/textures/item/ruby.png — модель сгенерируется сама
+    - "<dark_gray>Пример предмета P3rsoPack"
+  # Текстура pack/assets/p3rso/textures/item/ruby.png — модель сгенерируется сама
   texture: item/ruby
 
 ruby_sword:
@@ -31,8 +31,8 @@ ruby_helmet:
   material: LEATHER_HELMET
   name: "<#e0115f>Рубиновый шлем"
   texture: item/ruby_helmet
-  # Текстура на игроке: pack/assets/atelier/textures/entity/equipment/humanoid/ruby.png
-  # (для поножей — humanoid_leggings/ruby.png). equipment-ассет atelier:ruby сгенерируется сам.
+  # Текстура на игроке: pack/assets/p3rso/textures/entity/equipment/humanoid/ruby.png
+  # (для поножей — humanoid_leggings/ruby.png). equipment-ассет p3rso:ruby сгенерируется сам.
   equippable:
     slot: head
     asset: ruby

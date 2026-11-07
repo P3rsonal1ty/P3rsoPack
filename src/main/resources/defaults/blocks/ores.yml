@@ -1,6 +1,6 @@
 # Кастомные блоки (на состояниях нотного блока, до 674 штук).
 # ВАЖНО: в config/paper-global.yml включите block-updates.disable-noteblock-updates: true
-# Предмет блока создаётся автоматически с тем же id: /atelier give @s ruby_ore
+# Предмет блока создаётся автоматически с тем же id: /p3rsopack give @s ruby_ore
 
 ruby_ore:
   name: "<#e0115f>Рубиновая руда"

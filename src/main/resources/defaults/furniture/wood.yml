@@ -3,7 +3,7 @@
 
 chair:
   name: "<gold>Деревянный стул"
-  model: furniture/chair         # pack/assets/atelier/models/furniture/chair.json
+  model: furniture/chair         # pack/assets/p3rso/models/furniture/chair.json
   rotation-step: 45              # шаг поворота при установке (90, 45, ...)
   hitbox:
     type: interaction            # interaction (ширина/высота) | barrier (твёрдые блоки) | none

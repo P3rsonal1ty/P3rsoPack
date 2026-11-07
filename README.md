@@ -1,4 +1,4 @@
-# Atelier
+# P3rsoPack
 
 Плагин для **Paper / Folia 26.3**: кастомные предметы, интерфейсы (GUI), блоки и мебель для обычного
 ванильного клиента без модов. Ресурспак собирается автоматически из конфигов и папки `pack/`,
@@ -20,7 +20,7 @@
 ## Установка
 
 1. Нужны Java 25 и сервер **Paper или Folia 26.3**.
-2. Положите `Atelier-<версия>.jar` в `plugins/` и запустите сервер — в `plugins/Atelier/` появятся
+2. Положите `P3rsoPack-<версия>.jar` в `plugins/` и запустите сервер — в `plugins/P3rsoPack/` появятся
    примеры (рубин, рубиновый меч и броня, руда, стул, стол, магазин).
 3. Для кастомных блоков включите в `config/paper-global.yml` и перезапустите сервер:
    ```yaml
@@ -28,7 +28,7 @@
      disable-noteblock-updates: true
    ```
 4. Откройте порт пака (по умолчанию **8164/TCP**) или настройте `pack.hosting` (см. ниже).
-5. Зайдите на сервер: `/atelier give @s ruby`, `/atelier gui shop`.
+5. Зайдите на сервер: `/p3rsopack give @s ruby`, `/p3rsopack gui shop`.
 
 Сборка из исходников:
 
@@ -36,12 +36,12 @@
 ./gradlew build
 ```
 
-Готовый jar — `build/libs/Atelier-<версия>.jar`.
+Готовый jar — `build/libs/P3rsoPack-<версия>.jar`.
 
 ## Структура папки плагина
 
 ```
-plugins/Atelier/
+plugins/P3rsoPack/
 ├── config.yml          — namespace, хостинг и отправка пака, HUD
 ├── items/*.yml         — предметы
 ├── guis/*.yml          — окна
@@ -50,7 +50,7 @@ plugins/Atelier/
 ├── glyphs/*.yml        — картинки для текста: фоны окон, HUD, иконки
 ├── pack/               — ваши ресурсы в структуре ресурспака:
 │   ├── pack.png
-│   └── assets/atelier/
+│   └── assets/p3rso/
 │       ├── textures/item/…   textures/block/…   textures/gui/…
 │       ├── textures/entity/equipment/humanoid/…  (броня на игроке)
 │       └── models/…           (свои 3D-модели, например из Blockbench)
@@ -60,15 +60,15 @@ plugins/Atelier/
 
 Файлов в каждой папке может быть сколько угодно, подпапки тоже читаются. Один файл может содержать
 несколько определений: каждый раздел верхнего уровня — это id. Id без префикса получает `namespace`
-из `config.yml` (`ruby` → `atelier:ruby`). Допустимы только строчные латинские буквы, цифры и `_ . - /`.
+из `config.yml` (`ruby` → `p3rso:ruby`). Допустимы только строчные латинские буквы, цифры и `_ . - /`.
 
-После любых изменений: **`/atelier reload`** — конфиги перечитаются, пак пересоберётся и (если он
+После любых изменений: **`/p3rsopack reload`** — конфиги перечитаются, пак пересоберётся и (если он
 изменился) будет разослан игрокам онлайн. Ошибки выводятся в консоль и в чат с указанием файла и строки;
-повторно посмотреть их — `/atelier errors`.
+повторно посмотреть их — `/p3rsopack errors`.
 
 ## Пример: добавить предмет
 
-1. Нарисуйте текстуру 16×16 и положите её в `pack/assets/atelier/textures/item/sapphire.png`.
+1. Нарисуйте текстуру 16×16 и положите её в `pack/assets/p3rso/textures/item/sapphire.png`.
 2. Создайте `items/gems.yml`:
    ```yaml
    sapphire:
@@ -78,7 +78,7 @@ plugins/Atelier/
        - "Синий камень"
      texture: item/sapphire
    ```
-3. `/atelier reload`, затем `/atelier give @s sapphire`.
+3. `/p3rsopack reload`, затем `/p3rsopack give @s sapphire`.
 
 ### Все поля предмета
 
@@ -112,12 +112,12 @@ sapphire_helmet:
     - {attribute: armor, amount: 3, slot: head}
 ```
 
-Текстура брони на игроке: `pack/assets/atelier/textures/entity/equipment/humanoid/sapphire.png`
+Текстура брони на игроке: `pack/assets/p3rso/textures/entity/equipment/humanoid/sapphire.png`
 (для поножей — `humanoid_leggings/sapphire.png`). Файл `equipment/sapphire.json` создаётся автоматически.
 
 ## Пример: окно (GUI)
 
-1. Фон: картинка 176×222 (как окно сундука на 6 рядов) в `pack/assets/atelier/textures/gui/bank.png`.
+1. Фон: картинка 176×222 (как окно сундука на 6 рядов) в `pack/assets/p3rso/textures/gui/bank.png`.
 2. `glyphs/bank.yml`:
    ```yaml
    bank_bg:
@@ -148,7 +148,7 @@ sapphire_helmet:
          actions:
            - close
    ```
-4. `/atelier reload`, `/atelier gui bank`.
+4. `/p3rsopack reload`, `/p3rsopack gui bank`.
 
 Слоты: число, диапазон `"10-16"` или список. Действия:
 
@@ -193,7 +193,7 @@ sapphire_ore:
 ```yaml
 armchair:
   name: "Кресло"
-  model: furniture/armchair             # pack/assets/atelier/models/furniture/armchair.json
+  model: furniture/armchair             # pack/assets/p3rso/models/furniture/armchair.json
   rotation-step: 45
   hitbox: {type: interaction, width: 1.0, height: 1.0}
   # hitbox: {type: barrier, blocks: [[0,0,0], [1,0,0]]}   — твёрдые блоки, смещения поворачиваются вместе с мебелью
@@ -237,33 +237,33 @@ furniture/ pack/ data/` в одном git-репозитории/общей па
 
 ## Команды и права
 
-Все команды требуют `atelier.admin` (по умолчанию — операторы). Алиас: `/atl`.
+Все команды требуют `p3rsopack.admin` (по умолчанию — операторы). Алиас: `/pp`.
 
 | Команда | |
 |---|---|
-| `/atelier reload` | перечитать конфиги, пересобрать и разослать пак |
-| `/atelier give <игроки> <предмет> [кол-во]` | выдать предмет (с автодополнением) |
-| `/atelier gui <окно> [игроки]` | открыть окно |
-| `/atelier list [items\|blocks\|furniture\|guis\|glyphs]` | список id |
-| `/atelier errors` | ошибки и предупреждения последней загрузки |
-| `/atelier pack [info\|send [игроки]]` | URL/SHA-1 пака, отправить пак |
+| `/p3rsopack reload` | перечитать конфиги, пересобрать и разослать пак |
+| `/p3rsopack give <игроки> <предмет> [кол-во]` | выдать предмет (с автодополнением) |
+| `/p3rsopack gui <окно> [игроки]` | открыть окно |
+| `/p3rsopack list [items\|blocks\|furniture\|guis\|glyphs]` | список id |
+| `/p3rsopack errors` | ошибки и предупреждения последней загрузки |
+| `/p3rsopack pack [info\|send [игроки]]` | URL/SHA-1 пака, отправить пак |
 
 ## API для других плагинов
 
 ```java
-import dev.atelier.api.Atelier;
+import ru.p3rso.pack.api.P3rsoPack;
 
-ItemStack ruby = Atelier.item("ruby").orElseThrow();          // новый ItemStack
-Optional<String> id = Atelier.idOf(player.getInventory().getItemInMainHand());
-boolean isRuby = Atelier.is(stack, "ruby");
-Atelier.openGui(player, "shop");                               // с любого потока
-Component icon = Atelier.glyph("coin");
-Optional<String> block = Atelier.blockAt(block);               // на потоке региона
-Atelier.placeFurniture(location, "chair", 90f);
+ItemStack ruby = P3rsoPack.item("ruby").orElseThrow();          // новый ItemStack
+Optional<String> id = P3rsoPack.idOf(player.getInventory().getItemInMainHand());
+boolean isRuby = P3rsoPack.is(stack, "ruby");
+P3rsoPack.openGui(player, "shop");                               // с любого потока
+Component icon = P3rsoPack.glyph("coin");
+Optional<String> block = P3rsoPack.blockAt(block);               // на потоке региона
+P3rsoPack.placeFurniture(location, "chair", 90f);
 ```
 
-Подпишитесь на `dev.atelier.api.AtelierReloadEvent`, чтобы обновить свои кэши после `/atelier reload`.
-В `plugin.yml` добавьте `depend: [Atelier]` или `softdepend: [Atelier]`.
+Подпишитесь на `ru.p3rso.pack.api.P3rsoPackReloadEvent`, чтобы обновить свои кэши после `/p3rsopack reload`.
+В `plugin.yml` добавьте `depend: [P3rsoPack]` или `softdepend: [P3rsoPack]`.
 
 ## Ограничения
 
@@ -281,3 +281,7 @@ Atelier.placeFurniture(location, "chair", 90f);
 
 Код разделён на независимое от Bukkit ядро (`config`, `model`, `pack` — покрыто тестами) и слой плагина
 (`item`, `gui`, `block`, `furniture`, `host`, `command`).
+
+## Лицензия
+
+MIT — см. [LICENSE](LICENSE).

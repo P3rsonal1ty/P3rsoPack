@@ -1,1 +1,1 @@
-rootProject.name = "atelier"
+rootProject.name = "p3rsopack"

@@ -2,7 +2,7 @@ plugins {
     java
 }
 
-group = "dev.atelier"
+group = "ru.p3rso"
 version = "0.1.0"
 
 val paperApi = "26.3.build.244-stable"
@@ -49,5 +49,5 @@ tasks.test {
 }
 
 tasks.jar {
-    archiveFileName = "Atelier-${project.version}.jar"
+    archiveFileName = "P3rsoPack-${project.version}.jar"
 }

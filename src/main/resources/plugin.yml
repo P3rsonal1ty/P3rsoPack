@@ -1,11 +1,12 @@
-name: Atelier
+name: P3rsoPack
 version: '${version}'
-main: dev.atelier.AtelierPlugin
+main: ru.p3rso.pack.P3rsoPackPlugin
 api-version: '26.3'
 folia-supported: true
+author: P3rso
 description: Кастомные предметы, GUI, блоки и мебель через автоматически собираемый ресурспак
 website: https://github.com/
 permissions:
-  atelier.admin:
-    description: Доступ к /atelier
+  p3rsopack.admin:
+    description: Доступ к /p3rsopack
     default: op

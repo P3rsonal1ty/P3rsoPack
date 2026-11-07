@@ -1,4 +1,4 @@
-# Окна. Открыть: /atelier gui shop
+# Окна. Открыть: /p3rsopack gui shop
 # Действия (actions): "тип: значение"
 #   command: <команда от игрока>      console: <команда от консоли>
 #   open: <id окна>                   close

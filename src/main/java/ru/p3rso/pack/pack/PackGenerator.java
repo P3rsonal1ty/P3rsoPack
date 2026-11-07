@@ -554,9 +554,11 @@ public final class PackGenerator {
                         bool right = pos.x - left0 > tileX + tileW * 0.5;
                         bool bottom = pos.y - top0 > ph * 0.5;
                         // увеличение: целое, чтобы пиксели оставались ровными; панель не выше экрана без шапки и кнопок
-                        float scale = floor(min((shh - 80.0) / ph, (sw - TABS_RIGHT[menu] - 16.0) / pw));
+                        float scale = floor(min((shh - 80.0) / ph, (sw - TABS_RIGHT[menu] - 24.0) / pw));
                         scale = clamp(scale, 1.0, MAX_SCALE[menu]);
-                        float cx = max(sw * 0.5, TABS_RIGHT[menu] + 8.0 + pw * scale * 0.5);
+                        float half = pw * scale * 0.5;
+                        float cx = max(sw * 0.5, TABS_RIGHT[menu] + 16.0 + half);   // по центру, но не на вкладках
+                        cx = min(cx, sw - 4.0 - half);                              // и не за правым краем
                         float cy = shh * 0.5;
                         pos.x = cx - pw * scale * 0.5 + (tileX + (right ? tileW : 0.0)) * scale;
                         pos.y = cy - ph * scale * 0.5 + (bottom ? ph * scale : 0.0);

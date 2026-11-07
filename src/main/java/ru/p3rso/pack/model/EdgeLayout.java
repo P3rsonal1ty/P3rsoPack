@@ -25,8 +25,12 @@ import java.util.function.ToIntFunction;
 public record EdgeLayout(int width, int height, boolean centered, Element background, List<Element> elements,
                          boolean closeButton, List<Tab> tabs, List<Element> extraArt, int titleShift, int contentScale) {
     public static final int LINE_HEIGHT = 9;
-    /** Ширина строки для меню у края экрана — больше ширины экрана в пикселях интерфейса при масштабе ≥ 2. */
-    public static final int WIDE_LINE = 980;
+    /**
+     * Ширина строки для меню у края экрана: ровно ширина текстовой области виджета (1024 − 2·4). Клиент
+     * центрирует каждую строку внутри неё, поэтому строка во всю ширину начинается точно с левого края текста
+     * (x = 12), а виджет шире экрана прижат к x = 8.
+     */
+    public static final int WIDE_LINE = 1016;
     /** Максимальная ширина одного глифа — шире картинки режутся на куски. */
     public static final int MAX_TILE = 240;
     public static final int BG_MARGIN = 6;

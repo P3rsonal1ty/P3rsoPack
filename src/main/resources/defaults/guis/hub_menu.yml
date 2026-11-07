@@ -1,5 +1,5 @@
 # ┌────────────────────────────────────────────────────────────────────────┐
-# │ Полноэкранное меню: /menu                                              │
+# │ Полноэкранное меню с боковой панелью: /menu                            │
 # │ Кнопки — не ячейки сундука, а прямоугольники на картинке фона.         │
 # └────────────────────────────────────────────────────────────────────────┘
 # Как это работает:
@@ -9,10 +9,12 @@
 #    окна тоже становится частью меню;
 #  • buttons: x, y, width, height — прямоугольник в пикселях ОКНА (0,0 — левый верхний угол окна
 #    сундука; окно 176×222). Плагин сам кладёт невидимые предметы в ячейки, чьи центры попали
-#    в прямоугольник, — наведение показывает подсказку кнопки, клик выполняет её действия.
+#    в прямоугольник: наведение показывает подсказку кнопки, клик выполняет её действия.
 #    Кликабельные зоны: x 7..169; y 17..125 (окно) и 139..215 (инвентарь игрока).
+#    Окно клиент всегда ставит по центру экрана — кнопки за его краями рисовать можно, кликать нельзя.
 #  • tooltip-style: menu — своя рамка подсказки (pack/assets/p3rso/textures/gui/sprites/tooltip/menu_*.png).
-#  • чтобы при наведении не было видно квадратов сетки — config.yml → pack.slot-highlight: subtle.
+#
+# Раскладка: слева боковая панель (x 7, ширина 72, кнопки по 18 px), справа содержимое (x 81, ширина 88).
 
 hub_menu:
   title: ""                      # весь текст нарисован на фоне
@@ -24,29 +26,39 @@ hub_menu:
   open-actions:
     - "sound: block.amethyst_block.chime 0.8 1.2"
   buttons:
-    rpg:
+    # ── боковая панель ───────────────────────────────────────────────
+    home:
       x: 7
       y: 17
       width: 72
-      height: 54
+      height: 18
+      tooltip-style: menu
+      name: "<#c9b6ff>Главная"
+      lore:
+        - "<gray>Вы здесь"
+      actions:
+        - "sound: ui.button.click"
+    rpg:
+      x: 7
+      y: 35
+      width: 72
+      height: 18
       tooltip-style: menu
       name: "<#7dffc4><b>RPG мир"
       lore:
         - "<gray>Основной сервер с данжами,"
         - "<gray>классами и экономикой."
-        - ""
-        - "<#7dffc4>▶ Нажмите, чтобы перейти"
       actions:
         - "sound: entity.player.levelup 0.6 1.4"
         - close
         - "command: play"          # замените на свою команду перехода (у P3rsoNet это /play)
     games:
-      x: 97
-      y: 17
+      x: 7
+      y: 53
       width: 72
-      height: 54
+      height: 18
       tooltip-style: menu
-      name: "<#c9b6ff><b>Мини-игры"
+      name: "<#c9b6ff>Мини-игры"
       lore:
         - "<gray>Скоро здесь появятся"
         - "<gray>быстрые режимы."
@@ -56,8 +68,8 @@ hub_menu:
     profile:
       x: 7
       y: 71
-      width: 54
-      height: 36
+      width: 72
+      height: 18
       tooltip-style: menu
       name: "<#b9a6ff>Профиль"
       lore:
@@ -66,10 +78,10 @@ hub_menu:
         - "sound: entity.experience_orb.pickup 0.5 1.4"
         - "message: <newline><glyph:star> <#b9a6ff>Профиль <white>%player%<newline><gray>  Сюда можно вывести уровень, класс<newline><gray>  и баланс из своего плагина.<newline>"
     shop:
-      x: 61
-      y: 71
-      width: 54
-      height: 36
+      x: 7
+      y: 89
+      width: 72
+      height: 18
       tooltip-style: menu
       name: "<#ffd36e>Магазин"
       lore:
@@ -79,10 +91,10 @@ hub_menu:
         - "sound: ui.button.click"
         - "open: shop"
     items:
-      x: 115
-      y: 71
-      width: 54
-      height: 36
+      x: 7
+      y: 107
+      width: 72
+      height: 18
       tooltip-style: menu
       name: "<#7fb8ff>Предметы"
       lore:
@@ -91,24 +103,73 @@ hub_menu:
       actions:
         - "sound: ui.button.click"
         - "open: collection"
-    reward:
-      x: 7
-      y: 107
-      width: 162
-      height: 18
-      tooltip-style: menu
-      name: "<gradient:#ffe9a8:#ffb347><b>Ежедневная награда"
-      lore:
-        - "<gray>Заходите каждый день"
-        - "<gray>и забирайте подарок."
-      actions:
-        - "sound: entity.player.levelup 0.5 1.8"
-        - "actionbar: <#ffd36e><glyph:star> Награда будет доступна завтра"
-        # подключите свой плагин наград: - "console: rewards give %player% daily"
-    news:
+    help:
       x: 7
       y: 139
-      width: 108
+      width: 72
+      height: 18
+      tooltip-style: menu
+      name: "<#7fd8ff>Помощь"
+      lore:
+        - "<gray>Команды и правила"
+      actions:
+        - "message: <newline><#7fd8ff><b>Помощь</b><newline><gray>  /menu <white>— главное меню<newline><gray>  /cmenu <white>— классическое меню<newline>"
+        - close
+    github:
+      x: 7
+      y: 157
+      width: 72
+      height: 18
+      tooltip-style: menu
+      name: "<#6fe3a8>GitHub"
+      lore:
+        - "<gray>Исходный код плагина"
+      actions:
+        - "message: <#6fe3a8>▶ <click:open_url:'https://github.com/P3rsonal1ty/P3rsoPack'><u>github.com/P3rsonal1ty/P3rsoPack</u></click>"
+        - close
+    classic:
+      x: 7
+      y: 175
+      width: 72
+      height: 18
+      tooltip-style: menu
+      name: "<#c9b6ff>Классическое меню"
+      lore:
+        - "<gray>Меню в виде окна сундука"
+      actions:
+        - "sound: ui.button.click"
+        - "open: main_menu"
+    close:
+      x: 7
+      y: 197
+      width: 72
+      height: 18
+      tooltip-style: menu
+      name: "<#ff7a7a>Закрыть"
+      actions:
+        - "sound: block.chest.close 0.5 1.2"
+        - close
+
+    # ── содержимое ───────────────────────────────────────────────────
+    featured:
+      x: 81
+      y: 17
+      width: 88
+      height: 54
+      tooltip-style: menu
+      name: "<#7dffc4><b>RPG мир · Сезон 1"
+      lore:
+        - "<gray>Новые данжи и классы."
+        - ""
+        - "<#7dffc4>▶ Нажмите, чтобы играть"
+      actions:
+        - "sound: entity.player.levelup 0.6 1.4"
+        - close
+        - "command: play"
+    news:
+      x: 81
+      y: 71
+      width: 88
       height: 54
       tooltip-style: menu
       name: "<#ffe08a>Новости"
@@ -120,49 +181,17 @@ hub_menu:
         - "sound: item.book.page_turn"
         - "message: <newline><#ffe08a><b>Новости сервера</b><newline><gray>• <white>Открыт новый данж «Рубиновые копи»<newline><gray>• <white>Ивент в субботу в 18:00<newline><gray>• <white>Скидки 20% в магазине до конца недели<newline>"
         - close
-    help:
-      x: 115
+    reward:
+      x: 81
       y: 139
-      width: 54
-      height: 54
+      width: 88
+      height: 76
       tooltip-style: menu
-      name: "<#7fd8ff>Помощь"
+      name: "<gradient:#ffe9a8:#ffb347><b>Ежедневная награда"
       lore:
-        - "<gray>Команды и правила"
+        - "<gray>Заходите каждый день"
+        - "<gray>и забирайте подарок."
       actions:
-        - "message: <newline><#7fd8ff><b>Помощь</b><newline><gray>  /menu <white>— главное меню<newline><gray>  /cmenu <white>— классическое меню<newline>"
-        - close
-    github:
-      x: 7
-      y: 197
-      width: 54
-      height: 18
-      tooltip-style: menu
-      name: "<#6fe3a8>GitHub"
-      lore:
-        - "<gray>Исходный код плагина"
-      actions:
-        - "message: <#6fe3a8>▶ <click:open_url:'https://github.com/P3rsonal1ty/P3rsoPack'><u>github.com/P3rsonal1ty/P3rsoPack</u></click>"
-        - close
-    close:
-      x: 61
-      y: 197
-      width: 54
-      height: 18
-      tooltip-style: menu
-      name: "<#ff7a7a>Закрыть"
-      actions:
-        - "sound: block.chest.close 0.5 1.2"
-        - close
-    classic:
-      x: 115
-      y: 197
-      width: 54
-      height: 18
-      tooltip-style: menu
-      name: "<#c9b6ff>Классическое меню"
-      lore:
-        - "<gray>Меню в виде окна сундука"
-      actions:
-        - "sound: ui.button.click"
-        - "open: main_menu"
+        - "sound: entity.player.levelup 0.5 1.8"
+        - "actionbar: <#ffd36e><glyph:star> Награда будет доступна завтра"
+        # подключите свой плагин наград: - "console: rewards give %player% daily"

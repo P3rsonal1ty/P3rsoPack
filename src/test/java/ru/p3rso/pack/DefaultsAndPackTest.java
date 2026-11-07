@@ -88,10 +88,11 @@ class DefaultsAndPackTest {
         assertTrue(hub.hidePlayerInventory());
         java.util.function.Function<String, java.util.List<Integer>> slots = k -> hub.items().stream()
                 .filter(i -> i.key().equals(k)).findFirst().orElseThrow().slots();
-        assertEquals(java.util.List.of(0, 1, 2, 3, 9, 10, 11, 12, 18, 19, 20, 21), slots.apply("rpg"));
-        assertEquals(java.util.List.of(45, 46, 47, 48, 49, 50, 51, 52, 53), slots.apply("reward"));
-        assertEquals(java.util.List.of(54, 55, 56, 57, 58, 59, 63, 64, 65, 66, 67, 68, 72, 73, 74, 75, 76, 77), slots.apply("news"));
-        assertEquals(java.util.List.of(84, 85, 86), slots.apply("close"), "хотбар: виртуальные слоты 81..89");
+        assertEquals(java.util.List.of(9, 10, 11, 12), slots.apply("rpg"), "боковая панель: 4 ячейки ряда 1");
+        assertEquals(java.util.List.of(31, 32, 33, 34, 35, 40, 41, 42, 43, 44, 49, 50, 51, 52, 53), slots.apply("news"));
+        assertEquals(java.util.List.of(58, 59, 60, 61, 62, 67, 68, 69, 70, 71, 76, 77, 78, 79, 80, 85, 86, 87, 88, 89), slots.apply("reward"),
+                "награда занимает инвентарь игрока и хотбар справа");
+        assertEquals(java.util.List.of(81, 82, 83, 84), slots.apply("close"), "хотбар: виртуальные слоты 81..89");
         var close = hub.items().stream().filter(i -> i.key().equals("close")).findFirst().orElseThrow();
         assertEquals("p3rso:p3rsopack_invisible", close.itemModel());
         assertEquals("p3rso:menu", close.tooltipStyle());

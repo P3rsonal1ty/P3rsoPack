@@ -16,6 +16,7 @@ public final class EdgeArt {
     private final BufferedImage img;
     private final int w, h;
     private final Random rnd;
+    private java.util.function.Function<String, BufferedImage> iconLoader = k -> null;
 
     private EdgeArt(int w, int h, long seed) {
         this.w = w;
@@ -72,8 +73,12 @@ public final class EdgeArt {
         return a.img;
     }
 
-    public static BufferedImage render(EdgeLayout.Element e, BufferedImage icon) {
+    public static BufferedImage render(EdgeLayout.Element e, BufferedImage icon) { return render(e, icon, k -> null); }
+
+    /** iconLoader: ключ текстуры → картинка (для иконок плашек). */
+    public static BufferedImage render(EdgeLayout.Element e, BufferedImage icon, java.util.function.Function<String, BufferedImage> iconLoader) {
         EdgeArt a = new EdgeArt(e.width(), e.height(), e.key().hashCode());
+        a.iconLoader = iconLoader;
         EdgeLayout.Art art = e.art();
         switch (e.kind()) {
             case BUTTON -> a.button(art, icon);
@@ -175,8 +180,9 @@ public final class EdgeArt {
         }
         diamond(w / 2, ty, 2, GOLD_L, 255);
         ty += 7;
+        boolean hasCards = !art.cards().isEmpty();
         int iconSize = icon == null ? 0 : 16 * art.iconScale();
-        if (icon != null) {
+        if (icon != null && !hasCards) {
             int ix = w - iconSize - 10, iy = h - iconSize - 10;
             glow(ix + iconSize / 2.0, iy + iconSize / 2.0, iconSize * 0.85, iconSize * 0.75, lighten(top, .5), 80);
             blitIcon(icon, ix, iy, iconSize);
@@ -186,8 +192,45 @@ public final class EdgeArt {
             text(line, 10, ty, new int[]{232, 228, 255}, new int[]{190, 182, 235}, 1, true);
             ty += 11;
         }
+        if (hasCards) cards(art, 10, ty + (art.text().isEmpty() ? 0 : 3), w - 20, h - 10 - ty - (art.text().isEmpty() ? 0 : 3));
         int[][] corners = {{6, 6}, {w - 7, 6}, {6, h - 7}, {w - 7, h - 7}};
         for (int[] c : corners) diamond(c[0], c[1], 1, GOLD_L, 255);
+    }
+
+    /** Сетка плашек с информацией: иконка, заголовок, строки текста. */
+    private void cards(EdgeLayout.Art art, int x0, int y0, int aw, int ah) {
+        List<EdgeLayout.Card> cards = art.cards();
+        int cols = Math.max(1, Math.min(art.columns(), cards.size()));
+        int rows = (cards.size() + cols - 1) / cols;
+        int gap = 6;
+        int cw = (aw - gap * (cols - 1)) / cols, ch = Math.max(16, (ah - gap * (rows - 1)) / rows);
+        for (int i = 0; i < cards.size(); i++) {
+            EdgeLayout.Card c = cards.get(i);
+            int cx = x0 + (i % cols) * (cw + gap), cy = y0 + (i / cols) * (ch + gap);
+            int[] top = c.top(), bot = c.bottom();
+            rrect(cx + 1, cy + 2, cw, ch, new int[]{0, 0, 0}, new int[]{0, 0, 0}, 80, 4, 0);
+            rrect(cx, cy, cw, ch, mix(top, bot, .35), darken(bot, .25), 235, 4, 2);
+            rrect(cx, cy, cw, 12, lighten(top, .1), top, 245, 4, 0);                          // цветная шапка
+            glow(cx + cw * 0.5, cy, cw * 0.55, 10, new int[]{255, 255, 255}, 45);
+            border(cx, cy, cw, ch, lighten(top, .5), darken(bot, .45), 255, 4);
+            int tx = cx + 5;
+            BufferedImage ic = c.icon() == null ? null : iconLoader.apply(c.icon());
+            if (ic != null) {
+                blitIcon(ic, cx + 4, cy + 2, 8);
+                tx = cx + 15;
+            }
+            int[] tc = textColor(top);
+            text(c.title(), tx, cy + 3, tc, mix(tc, lighten(top, .6), .3), 1, tc[0] > 128);
+            int ly = cy + 17;
+            int[] body = textColor(mix(top, bot, .35));
+            boolean dark = body[0] < 128;
+            for (String line : c.text()) {
+                if (ly + PixelFont.HEIGHT > cy + ch - 3) break;
+                if (dark) text(line, cx + 5, ly, body, mix(body, bot, .2), 1, false);
+                else text(line, cx + 5, ly, new int[]{232, 228, 255}, new int[]{190, 182, 235}, 1, true);
+                ly += 10;
+            }
+        }
     }
 
     private void header(EdgeLayout.Art art, BufferedImage icon) {

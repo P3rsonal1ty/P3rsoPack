@@ -17,7 +17,9 @@
 #
 # Вкладка:
 #   label, icon, style/color          — кнопка слева; name, lore — подсказка при наведении
-#   content: {label, subtitle, text: [...], icon, icon-scale, style/color} — панель по центру
+#   content: {label, subtitle, text: [...], cards: [...], columns, icon, icon-scale, style/color} — панель по центру
+#     cards: [{title, text: [...], icon, style/color}] — плашки с информацией на панели
+#   sections: {ключ: {label, icon, content, buttons}} — разделы: появляются под вкладкой, когда она открыта
 #   buttons: [{label (MiniMessage), name, width, actions}] — кнопки внизу
 #   actions: [...]                    — для вкладки без content: что сделать при нажатии
 
@@ -36,18 +38,27 @@ edge_menu:
       content:
         label: "ДОБРО ПОЖАЛОВАТЬ"
         subtitle: "P3RSO NETWORK"
-        icon: item/icon_home
-        text:
-          - "ВЫБЕРИТЕ РАЗДЕЛ СЛЕВА."
-          - ""
-          - "• RPG МИР — ДАНЖИ, КЛАССЫ"
-          - "• МИНИ-ИГРЫ — СКОРО"
-          - "• МАГАЗИН И НАГРАДЫ"
-          - ""
-          - "ПРИЯТНОЙ ИГРЫ!"
+        columns: 2
+        cards:                           # плашки с информацией (картинка, без %player%)
+          - title: "СЕРВЕР"
+            icon: item/icon_rpg
+            style: success
+            text: ["RPG МИР 26.3", "ОНЛАЙН КАЖДЫЙ ДЕНЬ"]
+          - title: "НОВОСТИ"
+            icon: item/icon_scroll
+            style: primary
+            text: ["НОВЫЙ ДАНЖ", "«РУБИНОВЫЕ КОПИ»"]
+          - title: "ИВЕНТ"
+            icon: item/icon_games
+            style: blue
+            text: ["СУББОТА 18:00", "ПРИЗ — РЕДКИЙ МЕЧ"]
+          - title: "НАГРАДА"
+            icon: item/icon_gift
+            style: gold
+            text: ["ЗАХОДИ КАЖДЫЙ", "ДЕНЬ ЗА ПОДАРКОМ"]
       buttons:
         - label: "<green>▶ Играть"
-          name: "<green>Перейти в RPG мир"
+          name: "<gray>Перейти в RPG мир"
           actions: ["close", "command: play"]     # у P3rsoNet это /play
 
     rpg:
@@ -150,19 +161,53 @@ edge_menu:
     shop:
       label: "Магазин"
       icon: item/icon_shop
-      content:
-        label: "МАГАЗИН"
-        subtitle: "РУБИНОВАЯ ЛАВКА"
-        icon: item/icon_shop
-        style: gold
-        text:
-          - "МЕЧИ, БРОНЯ И РЕСУРСЫ."
-          - ""
-          - "(ПРИМЕР — ТОЛЬКО"
-          - "ДЛЯ АДМИНОВ)"
-      buttons:
-        - label: "<gold>Открыть лавку"
-          actions: ["sound: ui.button.click", "open: shop"]
+      content:                           # общая страница вкладки
+        label: "ТОРГОВЛЯ"
+        subtitle: "ВЫБЕРИТЕ РАЗДЕЛ СЛЕВА"
+        columns: 2
+        cards:
+          - title: "МАГАЗИН"
+            icon: item/icon_shop
+            style: gold
+            text: ["МЕЧИ, БРОНЯ,", "РЕСУРСЫ ЗА РУБИНЫ", "", "ЦЕНЫ ОТ СЕРВЕРА"]
+          - title: "АУКЦИОН"
+            icon: item/icon_auction
+            style: primary
+            text: ["ТОРГОВЛЯ", "МЕЖДУ ИГРОКАМИ", "", "СТАВКИ И ЛОТЫ"]
+      sections:                          # подвкладки: появляются под «Магазином», когда он открыт
+        store:
+          label: "Магазин"
+          icon: item/icon_shop
+          content:
+            label: "МАГАЗИН"
+            subtitle: "РУБИНОВАЯ ЛАВКА"
+            icon: item/icon_shop
+            style: gold
+            text:
+              - "МЕЧИ, БРОНЯ И РЕСУРСЫ."
+              - "ПЛАТИТЕ РУБИНАМИ."
+              - ""
+              - "(ПРИМЕР — ТОЛЬКО"
+              - "ДЛЯ АДМИНОВ)"
+          buttons:
+            - label: "<gold>Открыть магазин"
+              actions: ["sound: ui.button.click", "open: shop"]
+        auction:
+          label: "Аукцион"
+          icon: item/icon_auction
+          content:
+            label: "АУКЦИОН"
+            subtitle: "ТОРГОВЛЯ МЕЖДУ ИГРОКАМИ"
+            icon: item/icon_auction
+            style: primary
+            text:
+              - "ВЫСТАВЛЯЙТЕ ПРЕДМЕТЫ"
+              - "И ДЕЛАЙТЕ СТАВКИ."
+              - ""
+              - "ЛОТ ДЕРЖИТСЯ 24 ЧАСА."
+          buttons:
+            - label: "<#c9b6ff>Открыть аукцион"
+              actions: ["close", "command: ah"]   # команда вашего плагина аукциона
 
     items:
       label: "Предметы"

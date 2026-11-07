@@ -162,6 +162,22 @@ class DefaultsAndPackTest {
         var c = rows.get(2).stream().filter(s -> s.element() != null && s.element().key().equals("tab.home")).findFirst().orElseThrow();
         assertEquals(ru.p3rso.pack.model.EdgeLayout.SegmentType.CLICK_SHIFT, c.type());
         assertEquals(1, edge.tab("home").buttons().size());
+        // плашки на главной
+        assertEquals(4, edge.tab("home").titlePanel().art().cards().size());
+        // разделы «Магазина»: скрыты, пока вкладка закрыта; при открытии раздела — видны и подсвечены вместе с родителем
+        var shop = edge.tab("shop");
+        assertEquals(2, shop.sections().size());
+        assertNotNull(edge.tab("shop/auction"));
+        assertTrue(edge.visible("home").stream().noneMatch(e -> e.key().equals("tab.shop/auction")));
+        var open = edge.visible("shop/auction");
+        var auction = open.stream().filter(e -> e.key().equals("tab.shop/auction")).findFirst().orElseThrow();
+        var shopBtn = open.stream().filter(e -> e.key().equals("tab.shop")).findFirst().orElseThrow();
+        assertEquals(shopBtn.y() + 36, auction.y(), "разделы идут сразу под вкладкой: store, затем auction");
+        assertEquals(18, auction.x(), "раздел с отступом");
+        assertTrue(r.files().containsKey(dir + "content_shop_auction_t0.png"));
+        assertTrue(r.files().containsKey(dir + "tab_shop_auction_active.png"));
+        var items = open.stream().filter(e -> e.key().equals("tab.items")).findFirst().orElseThrow();
+        assertEquals(auction.y() + 18, items.y(), "следующие вкладки сдвигаются вниз");
         assertTrue(edge.tab("close").actions().stream().anyMatch(a -> a.type() == ru.p3rso.pack.model.GuiDef.Action.Type.CLOSE));
     }
 

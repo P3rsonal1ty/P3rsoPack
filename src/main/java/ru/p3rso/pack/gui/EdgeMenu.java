@@ -58,7 +58,8 @@ final class EdgeMenu {
         Map<String, HoverEvent<Component>> hovers = new HashMap<>();
         for (EdgeLayout.Element e : visible) {
             if (e.tab() != null) {
-                String target = e.tab();
+                EdgeLayout.Tab tt = edge.tab(e.tab());
+                String target = tt == null ? e.tab() : tt.target().key();
                 clicks.put(e.key(), callback(player, p -> {
                     p.playSound(net.kyori.adventure.sound.Sound.sound(net.kyori.adventure.key.Key.key("ui.button.click"),
                             net.kyori.adventure.sound.Sound.Source.MASTER, 0.4f, 1.2f));
@@ -84,6 +85,10 @@ final class EdgeMenu {
         }
         Map<String, String> override = new HashMap<>();
         if (current != null && current.activeGlyph() != null) override.put("tab." + current.key(), current.activeGlyph());
+        // открыт раздел — подсвечиваем и вкладку-родителя
+        for (EdgeLayout.Tab top : edge.tabs()) {
+            if (current != null && top.sections().contains(current) && top.activeGlyph() != null) override.put("tab." + top.key(), top.activeGlyph());
+        }
 
         List<Component> lines = new ArrayList<>();
         for (List<EdgeLayout.Segment> row : edge.rows(visible, id -> {

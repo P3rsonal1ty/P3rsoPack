@@ -39,7 +39,15 @@ public record EdgeLayout(int width, int height, boolean centered, Element backgr
 
     /** Параметры автоматически рисуемой картинки; null, если картинка своя (texture). */
     public record Art(String label, String subtitle, List<String> text, String icon, int[] top, int[] bottom,
-                      boolean active, String pill, int iconScale) {}
+                      boolean active, String pill, int iconScale, List<Card> cards, int columns) {
+        public Art(String label, String subtitle, List<String> text, String icon, int[] top, int[] bottom,
+                   boolean active, String pill, int iconScale) {
+            this(label, subtitle, text, icon, top, bottom, active, pill, iconScale, List.of(), 2);
+        }
+    }
+
+    /** Плашка с информацией на панели вкладки. */
+    public record Card(String title, List<String> text, String icon, int[] top, int[] bottom) {}
 
     /**
      * Элемент. {@code glyph}/{@code texture} — базовые id; если {@code tiles() > 1}, реальные глифы — {@link #tileGlyph(int)}.
@@ -73,8 +81,15 @@ public record EdgeLayout(int width, int height, boolean centered, Element backgr
      * и кнопки диалога внизу. Вкладка без содержимого просто выполняет actions.
      */
     public record Tab(String key, Source source, String activeGlyph, List<Element> content,
-                      List<FooterButton> buttons, List<GuiDef.Action> actions, Element titlePanel) {
+                      List<FooterButton> buttons, List<GuiDef.Action> actions, Element titlePanel,
+                      Element button, List<Tab> sections) {
         public boolean hasContent() { return !content.isEmpty() || titlePanel != null; }
+
+        /** Куда ведёт нажатие: на саму вкладку или (если у неё нет панели) на её первый раздел. */
+        public Tab target() {
+            if (hasContent() || sections.isEmpty()) return this;
+            return sections.getFirst();
+        }
     }
 
     /** Кнопка диалога внизу по центру. */
@@ -99,14 +114,26 @@ public record EdgeLayout(int width, int height, boolean centered, Element backgr
         return -1;
     }
 
+    /** Вкладка или раздел по ключу ("shop" или "shop/auction"). */
     public Tab tab(String key) {
-        for (Tab t : tabs) if (t.key().equals(key)) return t;
+        for (Tab t : tabs) {
+            if (t.key().equals(key)) return t;
+            for (Tab s : t.sections()) if (s.key().equals(key)) return s;
+        }
         return null;
+    }
+
+    /** Вкладки собираются в столбец на лету (с раскрытыми разделами открытой вкладки). */
+    public boolean dynamicTabs() { return !tabs.isEmpty() && tabs.getFirst().button() != null; }
+
+    private static Element atRow(Element e, int row) {
+        return new Element(e.key(), e.source(), e.kind(), e.x(), 9 + 18 * row, e.width(), e.height(), e.glyph(), e.texture(),
+                e.art(), e.name(), e.lore(), e.actions(), e.tab());
     }
 
     /** Первая вкладка с содержимым — открывается по умолчанию. */
     public Tab defaultTab() {
-        for (Tab t : tabs) if (t.hasContent()) return t;
+        for (Tab t : tabs) if (t.target().hasContent()) return t.target();
         return tabs.isEmpty() ? null : tabs.getFirst();
     }
 
@@ -124,7 +151,16 @@ public record EdgeLayout(int width, int height, boolean centered, Element backgr
         if (background != null) out.add(background);
         out.addAll(elements);
         Tab t = tabKey == null ? null : tab(tabKey);
-        if (t != null) out.addAll(t.content());
+        if (dynamicTabs()) {
+            int row = 0;
+            for (Tab top : tabs) {
+                out.add(atRow(top.button(), row++));
+                boolean open = t != null && (t == top || top.sections().contains(t));
+                if (open) for (Tab s : top.sections()) out.add(atRow(s.button(), row++));
+            }
+        } else if (t != null) {
+            out.addAll(t.content());
+        }
         return out;
     }
 

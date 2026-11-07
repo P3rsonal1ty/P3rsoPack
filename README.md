@@ -222,12 +222,33 @@ edge_menu:
       buttons:                 # кнопки внизу (до двух)
         - label: "<green>▶ Играть"
           actions: ["close", "command: play"]
+    shop:
+      label: "Магазин"
+      content:                 # общая страница с плашками
+        label: "ТОРГОВЛЯ"
+        columns: 2
+        cards:                 # плашки с информацией: title, text, icon, style/color
+          - {title: "МАГАЗИН", icon: item/icon_shop, style: gold, text: ["МЕЧИ, БРОНЯ"]}
+          - {title: "АУКЦИОН", icon: item/icon_auction, style: primary, text: ["ТОРГОВЛЯ МЕЖДУ ИГРОКАМИ"]}
+      sections:                # разделы: появляются под вкладкой, когда она открыта
+        store:
+          label: "Магазин"
+          content: {label: "МАГАЗИН", text: ["..."]}
+          buttons: [{label: "<gold>Открыть магазин", actions: ["open: shop"]}]
+        auction:
+          label: "Аукцион"
+          content: {label: "АУКЦИОН", text: ["..."]}
+          buttons: [{label: "Открыть аукцион", actions: ["close", "command: ah"]}]
     close:
       label: "Закрыть"
       style: danger
       actions: ["close"]       # вкладка без content — просто действия
 ```
 
+<p align="center"><img src="docs/edge_panels.png" width="800" alt="Вкладки с разделами и плашки"></p>
+
+- Плашки (`cards`) и текст панелей — часть картинки, поэтому они только для информации и без `%player%`; нажимаются
+  вкладки, разделы и кнопки внизу. Вкладка без своей `content`, но с `sections`, открывает первый раздел.
 - Картинки вкладок (обычная и подсвеченная), панелей и фона рисуются при сборке пака пиксельным шрифтом плагина
   (заглавные кириллица и латиница, цифры, знаки) в `pack/assets/<ns>/textures/gui/edge/<окно>/`; широкие режутся на
   куски ≤ 240 px (`..._t0.png`, `..._t1.png`). Своя PNG с тем же именем заменит сгенерированную.

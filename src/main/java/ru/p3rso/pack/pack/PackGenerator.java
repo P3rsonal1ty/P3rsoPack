@@ -361,7 +361,10 @@ public final class PackGenerator {
             if (edge.background() != null) all.add(edge.background());
             all.addAll(edge.elements());
             all.addAll(edge.extraArt());
-            for (var t : edge.tabs()) all.addAll(t.content());
+            for (var t : edge.tabs()) {
+                all.addAll(t.content());
+                for (var sec : t.sections()) all.addAll(sec.content());
+            }
             for (var e : all) {
                 boolean own = true;
                 for (int i = 0; i < e.tiles(); i++) own &= userFiles.contains(Ids.asset(e.tileTexture(i), "textures", ".png"));
@@ -401,8 +404,30 @@ public final class PackGenerator {
                     problems.warn(e.source(), "'" + e.key() + "': надпись «" + e.art().label() + "» не влезает в кнопку шириной "
                             + e.width() + " px — нужно ~" + EdgeArt.buttonLabelRight(e) + " px (увеличьте width или сократите надпись)");
                 }
+                var src = e;
+                for (var card : e.art().cards()) {
+                    if (card.icon() != null && !files.containsKey(Ids.asset(card.icon(), "textures", ".png"))) {
+                        problems.error(src.source(), "плашка «" + card.title() + "»: иконка '" + card.icon() + "' не найдена");
+                    }
+                    StringBuilder cc = new StringBuilder(card.title());
+                    card.text().forEach(cc::append);
+                    for (char ch : cc.toString().toCharArray()) {
+                        if (!PixelFont.get().supports(ch) && ch != ' ') {
+                            problems.warn(src.source(), "плашка «" + card.title() + "»: символа '" + ch + "' нет в пиксельном шрифте");
+                            break;
+                        }
+                    }
+                }
                 java.awt.image.BufferedImage img = e.kind() == ru.p3rso.pack.model.EdgeLayout.Kind.BACKGROUND
-                        ? EdgeArt.background(e.width(), e.height()) : EdgeArt.render(e, icon);
+                        ? EdgeArt.background(e.width(), e.height())
+                        : EdgeArt.render(e, icon, key -> {
+                            byte[] d = files.get(Ids.asset(key, "textures", ".png"));
+                            try {
+                                return d == null ? null : javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(d));
+                            } catch (IOException ex) {
+                                return null;
+                            }
+                        });
                 for (int i = 0; i < e.tiles(); i++) {
                     java.awt.image.BufferedImage tile = e.tiles() == 1 ? img : img.getSubimage(e.tileX(i), 0, e.tileWidth(i), e.height());
                     files.put(Ids.asset(e.tileTexture(i), "textures", ".png"), png(tile));

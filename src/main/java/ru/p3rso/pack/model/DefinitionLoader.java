@@ -33,16 +33,18 @@ public final class DefinitionLoader {
 
     static final Set<String> LOOK_KEYS = Set.of("texture", "textures", "parent", "handheld", "model", "item-model");
     static final Set<String> ITEM_KEYS = union(LOOK_KEYS, Set.of("material", "name", "lore", "max-stack-size",
-            "max-damage", "glint", "unbreakable", "hide-tooltip", "attributes", "enchantments", "equippable"));
+            "max-damage", "glint", "unbreakable", "hide-tooltip", "attributes", "enchantments", "equippable", "tooltip-style"));
     static final Set<String> BLOCK_KEYS = union(LOOK_KEYS, Set.of("material", "name", "lore", "variation", "hardness",
-            "tool", "requires-tool", "drops", "silk-touch", "exp", "sounds"));
+            "tool", "requires-tool", "drops", "silk-touch", "exp", "sounds", "tooltip-style"));
     static final Set<String> FURNITURE_KEYS = union(LOOK_KEYS, Set.of("material", "name", "lore", "display", "hitbox",
-            "seats", "seat", "rotation-step", "drop", "sounds"));
+            "seats", "seat", "rotation-step", "drop", "sounds", "tooltip-style"));
     static final Set<String> GLYPH_KEYS = Set.of("texture", "height", "ascent", "char");
     static final Set<String> GUI_KEYS = Set.of("title", "rows", "background", "background-offset", "title-offset", "items", "open-actions",
-            "command", "permission");
+            "command", "permission", "hide-player-inventory", "buttons");
     static final Set<String> GUI_ITEM_KEYS = Set.of("slot", "slots", "item", "material", "amount", "name", "lore", "item-model",
-            "actions", "left-actions", "right-actions", "shift-left-actions", "shift-right-actions", "middle-actions", "drop-actions");
+            "tooltip-style", "actions", "left-actions", "right-actions", "shift-left-actions", "shift-right-actions", "middle-actions", "drop-actions");
+    static final Set<String> GUI_BUTTON_KEYS = union(Set.of("x", "y", "width", "height", "icon-slot"),
+            GUI_ITEM_KEYS.stream().filter(k -> !k.equals("slot") && !k.equals("slots")).collect(java.util.stream.Collectors.toSet()));
 
     static final List<String> SLOTS = List.of("mainhand", "offhand", "hand", "head", "chest", "legs", "feet", "armor", "body", "saddle", "any");
     static final List<String> EQUIP_SLOTS = List.of("head", "chest", "legs", "feet", "body", "saddle", "mainhand", "offhand");
@@ -66,6 +68,7 @@ public final class DefinitionLoader {
     private final Map<String, FurnitureDef> furniture = new LinkedHashMap<>();
     private final Map<String, Source> glyphCharsExplicit = new HashMap<>();
     private final Map<String, Source> guiCommands = new HashMap<>();
+    private final List<GuiDef.GuiItem> pendingIcons = new ArrayList<>();
 
     public DefinitionLoader(Path root, String namespace, Environment env, Problems problems) {
         this.root = root;
@@ -256,7 +259,8 @@ public final class DefinitionLoader {
         Boolean glint = n.has("glint") ? n.bool("glint", false) : null;
         return new ItemDef(id, n.source(), material, n.string("name", null), n.stringList("lore"), look,
                 maxStack, maxDamage, glint, n.bool("unbreakable", false), n.bool("hide-tooltip", false),
-                List.copyOf(attrs), ench, eq, placement);
+                List.copyOf(attrs), ench, eq,
+                n.has("tooltip-style") ? Ids.key(ns, n.reqString("tooltip-style"), n.require("tooltip-style")) : null, placement);
     }
 
     private String material(YNode n, String def) {
@@ -445,20 +449,34 @@ public final class DefinitionLoader {
     private GuiDef parseGui(String id, YNode n) {
         n.checkKeys(GUI_KEYS, problems);
         int rows = n.integer("rows", 6, 1, 6);
+        boolean hideInv = n.bool("hide-player-inventory", false);
+        int maxSlot = rows * 9 + (hideInv ? 36 : 0);
         String bg = n.has("background") ? Ids.key(ns, n.reqString("background"), n.require("background")) : null;
         List<GuiDef.GuiItem> list = new ArrayList<>();
-        YNode its = n.get("items");
         Map<Integer, String> taken = new HashMap<>();
+        YNode its = n.get("items");
         if (its != null) {
             if (!its.isMap()) throw its.error("items — раздел, где каждый элемент имеет своё имя: items: { кнопка: {slot: 13, ...} }");
             for (Map.Entry<String, YNode> e : its.entries().entrySet()) {
-                YNode it = e.getValue();
                 try {
-                    list.add(parseGuiItem(e.getKey(), it, rows, taken));
+                    list.add(parseGuiItem(e.getKey(), e.getValue(), rows, maxSlot, hideInv, taken, false));
                 } catch (ConfigException ex) {
                     problems.error(ex);
                 }
             }
+        }
+        YNode btns = n.get("buttons");
+        if (btns != null) {
+            if (!btns.isMap()) throw btns.error("buttons — раздел вида { play: {x: 10, y: 20, width: 60, height: 40, actions: [...]} }");
+            for (Map.Entry<String, YNode> e : btns.entries().entrySet()) {
+                try {
+                    list.add(parseGuiItem(e.getKey(), e.getValue(), rows, maxSlot, hideInv, taken, true));
+                } catch (ConfigException ex) {
+                    problems.error(ex);
+                }
+            }
+            list.addAll(pendingIcons);
+            pendingIcons.clear();
         }
         List<GuiDef.Action> open = n.has("open-actions") ? actions(n.require("open-actions")) : List.of();
         String command = null;
@@ -471,46 +489,86 @@ public final class DefinitionLoader {
         }
         String permission = n.has("permission") ? n.reqString("permission").trim() : null;
         return new GuiDef(id, n.source(), n.string("title", ""), rows, bg, n.integer("background-offset", Integer.MIN_VALUE),
-                n.integer("title-offset", 0), List.copyOf(list), open, command, permission);
+                n.integer("title-offset", 0), List.copyOf(list), open, command, permission, hideInv);
     }
 
-    private GuiDef.GuiItem parseGuiItem(String key, YNode it, int rows, Map<Integer, String> taken) {
-        if (!it.isMap()) throw it.error("элемент окна — раздел с полями slot, item/material, actions...");
-        it.checkKeys(GUI_ITEM_KEYS, problems);
+    /** Невидимая модель для кнопок-областей (генерируется в паке всегда). */
+    public static String invisibleModel(String namespace) { return namespace + ":p3rsopack_invisible"; }
+
+    private GuiDef.GuiItem parseGuiItem(String key, YNode it, int rows, int maxSlot, boolean hideInv,
+                                        Map<Integer, String> taken, boolean button) {
+        if (!it.isMap()) throw it.error(button ? "кнопка — раздел с полями x, y, width, height, actions..."
+                : "элемент окна — раздел с полями slot, item/material, actions...");
+        it.checkKeys(button ? GUI_BUTTON_KEYS : GUI_ITEM_KEYS, problems);
         List<Integer> slots = new ArrayList<>();
-        YNode sn = it.has("slots") ? it.require("slots") : it.get("slot");
-        if (sn == null) throw it.error("не указан slot (номер ячейки 0.." + (rows * 9 - 1) + ")");
-        for (YNode s : sn.asList()) {
-            String v = s.asString().trim();
-            int dash = v.indexOf('-', 1);
-            try {
-                if (dash > 0) {
-                    int a = Integer.parseInt(v.substring(0, dash).trim()), b = Integer.parseInt(v.substring(dash + 1).trim());
-                    for (int i = Math.min(a, b); i <= Math.max(a, b); i++) slots.add(i);
-                } else slots.add(Integer.parseInt(v));
-            } catch (NumberFormatException e) {
-                throw s.error("слот должен быть числом или диапазоном вида 10-16, а найдено '" + v + "'");
+        if (button) {
+            int x = it.require("x").asInt(), y = it.require("y").asInt();
+            int w = it.require("width").asInt(), h = it.require("height").asInt();
+            if (w <= 0 || h <= 0) throw it.error("width и height должны быть больше нуля");
+            slots.addAll(GuiGeometry.covered(rows, hideInv, x, y, w, h));
+            if (slots.isEmpty()) {
+                throw it.error("кнопка " + x + "," + y + " " + w + "×" + h + " не накрывает ни одной ячейки: кликабельны только центры ячеек 18×18"
+                        + " (окно x 7..169, y 17.." + (17 + rows * 18) + (hideInv ? ", инвентарь игрока y " + (GuiGeometry.height(rows) - 83)
+                        + ".." + (GuiGeometry.height(rows) - 7) : ", для нижней части включите hide-player-inventory") + ")");
             }
-            for (int slot : slots) {
-                if (slot < 0 || slot >= rows * 9) throw s.error("слот " + slot + " вне окна: при rows: " + rows + " доступны 0.." + (rows * 9 - 1));
+        } else {
+            YNode sn = it.has("slots") ? it.require("slots") : it.get("slot");
+            if (sn == null) throw it.error("не указан slot (номер ячейки 0.." + (maxSlot - 1) + ")");
+            for (YNode s : sn.asList()) {
+                String v = s.asString().trim();
+                int dash = v.indexOf('-', 1);
+                try {
+                    if (dash > 0) {
+                        int a = Integer.parseInt(v.substring(0, dash).trim()), b = Integer.parseInt(v.substring(dash + 1).trim());
+                        for (int i = Math.min(a, b); i <= Math.max(a, b); i++) slots.add(i);
+                    } else slots.add(Integer.parseInt(v));
+                } catch (NumberFormatException e) {
+                    throw s.error("слот должен быть числом или диапазоном вида 10-16, а найдено '" + v + "'");
+                }
+                for (int slot : slots) {
+                    if (slot < 0 || slot >= maxSlot) throw s.error("слот " + slot + " вне окна: при rows: " + rows + " доступны 0.." + (maxSlot - 1)
+                            + (hideInv ? " (включая инвентарь игрока)" : ""));
+                }
             }
-        }
-        for (int slot : slots) {
-            String prev = taken.put(slot, key);
-            if (prev != null && !prev.equals(key)) problems.warn(it.source(), "слот " + slot + " уже занят элементом '" + prev + "' — будет перезаписан");
         }
         String item = it.has("item") ? Ids.key(ns, it.reqString("item"), it.require("item")) : null;
         String mat = null;
         if (item == null) mat = it.has("material") ? material(it, "STONE") : null;
         String im = it.has("item-model") ? Ids.key(ns, it.reqString("item-model"), it.require("item-model")) : null;
-        if (item == null && mat == null && im == null) mat = "PAPER";
+        Integer iconSlot = null;
+        if (button) {
+            if (it.has("icon-slot")) {
+                iconSlot = it.require("icon-slot").asInt();
+                if (!slots.contains(iconSlot)) throw it.require("icon-slot").error("icon-slot " + iconSlot + " не входит в область кнопки: " + slots);
+            } else if (item != null || it.has("material") || im != null) {
+                iconSlot = slots.get(slots.size() / 2);
+            }
+        }
+        for (int slot : slots) {
+            String prev = taken.put(slot, key);
+            if (prev != null && !prev.equals(key)) problems.warn(it.source(), "ячейка " + slot + " уже занята элементом '" + prev + "' — будет перезаписана");
+        }
+        if (item == null && mat == null && im == null) mat = button ? "PAPER" : "PAPER";
         if (mat == null && im != null) mat = "PAPER";
         Map<String, List<GuiDef.Action>> acts = new LinkedHashMap<>();
         for (String k : List.of("actions", "left-actions", "right-actions", "shift-left-actions", "shift-right-actions", "middle-actions", "drop-actions")) {
             if (it.has(k)) acts.put(k.equals("actions") ? "any" : k.replace("-actions", "").replace('-', '_'), actions(it.require(k)));
         }
-        return new GuiDef.GuiItem(key, it.source(), List.copyOf(slots), item, mat, it.integer("amount", 1, 1, 99),
-                it.string("name", null), it.stringList("lore"), im, acts);
+        String tooltip = it.has("tooltip-style") ? Ids.key(ns, it.reqString("tooltip-style"), it.require("tooltip-style")) : null;
+        String name = it.string("name", null);
+        List<String> lore = it.stringList("lore");
+        int amount = it.integer("amount", 1, 1, 99);
+        if (!button) {
+            return new GuiDef.GuiItem(key, it.source(), List.copyOf(slots), item, mat, amount, name, lore, im, tooltip, acts);
+        }
+        // кнопка: невидимые предметы на всей области + (необязательно) видимая иконка в одной ячейке
+        List<Integer> area = new ArrayList<>(slots);
+        if (iconSlot != null) area.remove(iconSlot);
+        GuiDef.GuiItem areaItem = new GuiDef.GuiItem(key, it.source(), List.copyOf(area), null, "PAPER", 1, name, lore,
+                invisibleModel(ns), tooltip, acts);
+        if (iconSlot == null) return areaItem;
+        pendingIcons.add(new GuiDef.GuiItem(key + "#icon", it.source(), List.of(iconSlot), item, mat, amount, name, lore, im, tooltip, acts));
+        return areaItem;
     }
 
     private static final Map<String, GuiDef.Action.Type> ACTIONS = Map.of(

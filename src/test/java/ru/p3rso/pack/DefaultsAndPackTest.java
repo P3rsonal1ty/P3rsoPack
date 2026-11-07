@@ -68,8 +68,9 @@ class DefaultsAndPackTest {
         assertTrue(defs.items().containsKey("p3rso:ruby_ore"), "у блока есть авто-предмет");
         assertTrue(defs.items().containsKey("p3rso:chair"), "у мебели есть авто-предмет");
         assertEquals(ItemDef.Placement.Type.BLOCK, defs.items().get("p3rso:ruby_ore").placement().type());
-        assertEquals(4, defs.guis().size());
-        assertEquals("menu", defs.guis().get("p3rso:main_menu").command());
+        assertEquals(5, defs.guis().size());
+        assertEquals("cmenu", defs.guis().get("p3rso:main_menu").command());
+        assertEquals("menu", defs.guis().get("p3rso:hub_menu").command());
         assertEquals("p3rsopack.admin", defs.guis().get("p3rso:collection").permission());
         // якоря YAML: вся карточка кликается как иконка
         var main = defs.guis().get("p3rso:main_menu");
@@ -78,6 +79,42 @@ class DefaultsAndPackTest {
         assertEquals(icon.actions(), area.actions());
         assertEquals(java.util.List.of(12, 13, 14, 21, 23, 30, 31, 32), area.slots());
         assertEquals(40, r.sha1().length());
+    }
+
+    @Test
+    void fullScreenMenuButtonsMapToCells() throws Exception {
+        Definitions defs = load();
+        var hub = defs.guis().get("p3rso:hub_menu");
+        assertTrue(hub.hidePlayerInventory());
+        java.util.function.Function<String, java.util.List<Integer>> slots = k -> hub.items().stream()
+                .filter(i -> i.key().equals(k)).findFirst().orElseThrow().slots();
+        assertEquals(java.util.List.of(0, 1, 2, 3, 9, 10, 11, 12, 18, 19, 20, 21), slots.apply("rpg"));
+        assertEquals(java.util.List.of(45, 46, 47, 48, 49, 50, 51, 52, 53), slots.apply("reward"));
+        assertEquals(java.util.List.of(54, 55, 56, 57, 58, 59, 63, 64, 65, 66, 67, 68, 72, 73, 74, 75, 76, 77), slots.apply("news"));
+        assertEquals(java.util.List.of(84, 85, 86), slots.apply("close"), "хотбар: виртуальные слоты 81..89");
+        var close = hub.items().stream().filter(i -> i.key().equals("close")).findFirst().orElseThrow();
+        assertEquals("p3rso:p3rsopack_invisible", close.itemModel());
+        assertEquals("p3rso:menu", close.tooltipStyle());
+
+        PackGenerator.Result r = build(defs);
+        assertEquals(java.util.List.of(), problems.all());
+        assertEquals("minecraft:empty", json(r, "assets/p3rso/items/p3rsopack_invisible.json").getAsJsonObject("model").get("type").getAsString());
+        assertTrue(r.files().containsKey("assets/minecraft/textures/gui/sprites/container/slot_highlight_back.png"), "slot-highlight: subtle");
+        assertEquals(241, r.resolved().glyphs().get("p3rso:hub_bg").advance());
+    }
+
+    @Test
+    void geometryMatchesVanillaContainer() {
+        // 6 рядов: окно 222 px, инвентарь игрока с y=139, хотбар с y=197
+        var cells = ru.p3rso.pack.model.GuiGeometry.cells(6, true);
+        assertEquals(90, cells.size());
+        assertEquals(139, cells.get(54).y());
+        assertEquals(197, cells.get(81).y());
+        assertEquals(0, ru.p3rso.pack.model.GuiGeometry.playerSlot(6, 81));
+        assertEquals(9, ru.p3rso.pack.model.GuiGeometry.playerSlot(6, 54));
+        assertEquals(81, ru.p3rso.pack.model.GuiGeometry.virtualSlot(6, 0));
+        // 3 ряда: окно 168 px → инвентарь с y=85
+        assertEquals(85, ru.p3rso.pack.model.GuiGeometry.cells(3, true).get(27).y());
     }
 
     @Test
@@ -136,7 +173,7 @@ class DefaultsAndPackTest {
         GlyphDef icon = r.resolved().glyphs().get("p3rso:ruby_icon");
         assertEquals(9, icon.advance(), "16 px при масштабе 8/16 = 8, +1");
         JsonObject font = json(r, "assets/p3rso/font/glyphs.json");
-        assertEquals(6, font.getAsJsonArray("providers").size());
+        assertEquals(7, font.getAsJsonArray("providers").size());
         JsonObject first = font.getAsJsonArray("providers").get(0).getAsJsonObject();
         assertEquals("bitmap", first.get("type").getAsString());
         JsonObject shift = json(r, "assets/p3rso/font/shift.json").getAsJsonArray("providers").get(0).getAsJsonObject();

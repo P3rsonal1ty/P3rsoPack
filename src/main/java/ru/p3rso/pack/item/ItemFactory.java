@@ -72,6 +72,7 @@ public final class ItemFactory {
             if (def.glint() != null) meta.setEnchantmentGlintOverride(def.glint());
             if (def.unbreakable()) meta.setUnbreakable(true);
             if (def.hideTooltip()) meta.setHideTooltip(true);
+            if (def.tooltipStyle() != null) meta.setTooltipStyle(NamespacedKey.fromString(def.tooltipStyle()));
             int i = 0;
             for (ItemDef.AttributeSpec a : def.attributes()) {
                 Attribute attr = Registry.ATTRIBUTE.get(Objects.requireNonNull(NamespacedKey.fromString(a.attribute())));

@@ -14,3 +14,10 @@ star:
   texture: hud/star
   height: 9
   ascent: 8
+
+# Полноэкранное меню (/menu): холст 240×256 больше окна сундука (176×222) и выходит за его края.
+# Верх холста на 17 px выше окна → ascent = 13 + 17 = 30. Слева холст шире на 32 px → background-offset = −8 − 32 = −40.
+hub_bg:
+  texture: gui/hub_menu
+  height: 256
+  ascent: 30

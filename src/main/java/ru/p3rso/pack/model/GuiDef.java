@@ -17,14 +17,21 @@ public record GuiDef(
         List<GuiItem> items,
         List<Action> openActions,
         String command,
-        String permission) {
+        String permission,
+        boolean hidePlayerInventory) {
+
+    /** Слоты нижней части окна (инвентарь игрока): rows·9 + 0..26 — три ряда сверху вниз, rows·9 + 27..35 — хотбар. */
+    public int topSize() { return rows * 9; }
+
+    public int totalSlots() { return hidePlayerInventory ? rows * 9 + 36 : rows * 9; }
 
     /**
      * Элемент окна. {@code item} — id кастомного предмета или null; {@code material} — ванильный материал.
      * {@code actions}: ключ — тип клика (any, left, right, shift_left, shift_right, middle, drop), значение — действия.
      */
     public record GuiItem(String key, Source source, List<Integer> slots, String item, String material, int amount,
-                          String name, List<String> lore, String itemModel, Map<String, List<Action>> actions) {}
+                          String name, List<String> lore, String itemModel, String tooltipStyle,
+                          Map<String, List<Action>> actions) {}
 
     /** Действие по клику. */
     public record Action(Type type, String value, Source source) {

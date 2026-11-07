@@ -21,6 +21,7 @@ public record ItemDef(
         List<AttributeSpec> attributes,
         Map<String, Integer> enchantments,
         EquippableSpec equippable,
+        String tooltipStyle,
         Placement placement) {
 
     /** Что предмет ставит при ПКМ по блоку. */

@@ -26,7 +26,11 @@ public record Settings(
         boolean hudEnabled,
         String hudText,
         int hudIntervalTicks,
-        boolean resetVanillaNoteBlocks) {
+        boolean resetVanillaNoteBlocks,
+        SlotHighlight slotHighlight) {
+
+    /** Подсветка ячейки при наведении (действует на все окна у игрока, т.к. это спрайт ресурспака). */
+    public enum SlotHighlight { DEFAULT, SUBTLE, HIDDEN }
 
     public enum HostMode { SELF, EXTERNAL, NONE }
 
@@ -34,7 +38,7 @@ public record Settings(
 
     public static Settings defaults() {
         return new Settings("p3rso", "P3rso resource pack", HostMode.SELF, "0.0.0.0", 8164, "", "", "",
-                SendPhase.CONFIGURATION, false, "", 60, true, -8, false, "", 20, true);
+                SendPhase.CONFIGURATION, false, "", 60, true, -8, false, "", 20, true, SlotHighlight.DEFAULT);
     }
 
     public static Settings parse(YNode root, Problems problems) {
@@ -51,9 +55,11 @@ public record Settings(
         SendPhase phase = d.sendPhase();
         boolean required = d.required(), resend = d.resendOnReload();
         String prompt = d.prompt();
+        SlotHighlight hideHighlight = d.slotHighlight();
         if (pack != null) {
-            pack.checkKeys(Set.of("description", "hosting", "send"), problems);
+            pack.checkKeys(Set.of("description", "hosting", "send", "slot-highlight"), problems);
             desc = pack.string("description", desc);
+            hideHighlight = enumOf(pack, "slot-highlight", SlotHighlight.class, hideHighlight, List.of("default", "subtle", "hidden"));
             YNode h = pack.get("hosting");
             if (h != null) {
                 h.checkKeys(Set.of("mode", "bind-address", "port", "public-address", "external-url", "external-sha1"), problems);
@@ -103,7 +109,7 @@ public record Settings(
             resetNb = b.bool("reset-vanilla-note-blocks", resetNb);
         }
         return new Settings(ns, desc, mode, bind, port, pub, extUrl, extSha, phase, required, prompt, timeout, resend,
-                bgOffset, hud, hudText, hudInterval, resetNb);
+                bgOffset, hud, hudText, hudInterval, resetNb, hideHighlight);
     }
 
     private static <E extends Enum<E>> E enumOf(YNode parent, String key, Class<E> type, E def, List<String> names) {

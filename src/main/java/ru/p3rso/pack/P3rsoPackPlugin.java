@@ -90,7 +90,7 @@ public final class P3rsoPackPlugin extends JavaPlugin implements Listener {
 
         var pm = getServer().getPluginManager();
         pm.registerEvents(this, this);
-        pm.registerEvents(new GuiListener(guis), this);
+        pm.registerEvents(new GuiListener(this, guis), this);
         pm.registerEvents(new BlockListener(this, blocks), this);
         pm.registerEvents(new FurnitureListener(this, furniture), this);
         pm.registerEvents(packs, this);

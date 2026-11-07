@@ -3,6 +3,7 @@ package ru.p3rso.pack.gui;
 import ru.p3rso.pack.P3rsoPackPlugin;
 import ru.p3rso.pack.model.GlyphDef;
 import ru.p3rso.pack.model.GuiDef;
+import ru.p3rso.pack.model.GuiGeometry;
 import ru.p3rso.pack.model.Settings;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
@@ -21,8 +22,14 @@ import java.util.List;
 /** Открытие окон из guis/ и выполнение действий. Все вызовы — на потоке игрока (Folia). */
 public final class GuiManager {
     private final P3rsoPackPlugin plugin;
+    private final InventoryBackup backup;
 
-    public GuiManager(P3rsoPackPlugin plugin) { this.plugin = plugin; }
+    public GuiManager(P3rsoPackPlugin plugin) {
+        this.plugin = plugin;
+        this.backup = new InventoryBackup(plugin);
+    }
+
+    public InventoryBackup backup() { return backup; }
 
     /** Открывает окно; можно вызывать с любого потока — переключится на планировщик игрока. */
     public boolean open(Player player, String id) {
@@ -47,6 +54,7 @@ public final class GuiManager {
         GuiHolder holder = new GuiHolder(def);
         Inventory inv = Bukkit.createInventory(holder, def.rows() * 9, title(def, player));
         holder.inventory(inv);
+        if (def.hidePlayerInventory()) backup.hide(player);
         fill(holder, player);
         player.openInventory(inv);
         run(player, holder, def.openActions());
@@ -74,11 +82,16 @@ public final class GuiManager {
 
     void fill(GuiHolder holder, Player player) {
         Inventory inv = holder.getInventory();
+        GuiDef def = holder.def();
         inv.clear();
-        for (GuiDef.GuiItem it : holder.def().items()) {
+        if (def.hidePlayerInventory()) backup.purge(player);
+        for (GuiDef.GuiItem it : def.items()) {
             ItemStack stack = render(it, player);
             if (stack == null) continue;
-            for (int slot : it.slots()) inv.setItem(slot, stack.clone());
+            for (int slot : it.slots()) {
+                if (slot < def.topSize()) inv.setItem(slot, stack.clone());
+                else if (def.hidePlayerInventory()) player.getInventory().setItem(GuiGeometry.playerSlot(def.rows(), slot), stack.clone());
+            }
         }
     }
 
@@ -98,6 +111,8 @@ public final class GuiManager {
                     .decorationIfAbsent(net.kyori.adventure.text.format.TextDecoration.ITALIC, net.kyori.adventure.text.format.TextDecoration.State.FALSE));
             if (!it.lore().isEmpty()) meta.lore(text.lore(it.lore(), player));
             if (it.itemModel() != null) meta.setItemModel(NamespacedKey.fromString(it.itemModel()));
+            if (it.tooltipStyle() != null) meta.setTooltipStyle(NamespacedKey.fromString(it.tooltipStyle()));
+            meta.getPersistentDataContainer().set(backup.menuItemKey(), org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
         });
         return stack;
     }

@@ -1,5 +1,5 @@
 # ┌──────────────────────────────────────────────────────────────────┐
-# │ Главное меню. Открывается у любого игрока командой /menu         │
+# │ Классическое меню (окно сундука). Открывается командой /cmenu    │
 # │ (а также /p3rsopack gui main_menu). Фон — glyphs/menus.yml.      │
 # └──────────────────────────────────────────────────────────────────┘
 # Раскладка слотов (6 рядов по 9):
@@ -13,7 +13,7 @@ main_menu:
   title: "<glyph:star> <gradient:#ffe9a8:#ffb347>Главное меню</gradient>"
   rows: 6
   background: main_menu_bg
-  command: menu                  # /menu — регистрируется при старте сервера
+  command: cmenu                 # /cmenu — регистрируется при старте сервера
   # permission: p3rsopack.menu   # раскомментируйте, чтобы ограничить доступ
   open-actions:
     - "sound: block.amethyst_block.chime 0.8 1.2"
@@ -99,7 +99,7 @@ main_menu:
       lore:
         - "<gray>Команды сервера"
       actions:
-        - "message: <newline><#7fd8ff><b>Помощь</b><newline><gray>  /menu <white>— это меню<newline><gray>  /p3rsopack <white>— управление плагином (для админов)<newline>"
+        - "message: <newline><#7fd8ff><b>Помощь</b><newline><gray>  /menu <white>— главное меню<newline><gray>  /cmenu <white>— это меню<newline><gray>  /p3rsopack <white>— управление плагином (для админов)<newline>"
         - close
     close:
       slot: 49

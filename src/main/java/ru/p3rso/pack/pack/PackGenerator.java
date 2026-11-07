@@ -72,6 +72,9 @@ public final class PackGenerator {
         generateBlocks(defs, variations);
         for (ItemDef item : defs.items().values()) generateItem(item);
         Map<String, GlyphDef> glyphs = generateFonts(defs);
+        writeInvisibleItem();
+        checkTooltipStyles(defs);
+        if (settings.slotHighlight() != Settings.SlotHighlight.DEFAULT) slotHighlight(settings.slotHighlight());
         writeAtlas();
         Definitions resolved = new Definitions(defs.items(), glyphs, defs.guis(), defs.blocks(), defs.furniture());
         byte[] zip = zip(files);
@@ -339,6 +342,63 @@ public final class PackGenerator {
         shiftFont.add("providers", sp);
         put("assets/" + ns + "/font/shift.json", shiftFont);
         return out;
+    }
+
+    // ------------------------------------------------------------------ GUI helpers
+
+    /** Невидимый предмет для кнопок-областей: модель типа minecraft:empty ничего не рисует. */
+    private void writeInvisibleItem() {
+        JsonObject model = new JsonObject();
+        model.addProperty("type", "minecraft:empty");
+        JsonObject root = new JsonObject();
+        root.add("model", model);
+        put(Ids.asset(ru.p3rso.pack.model.DefinitionLoader.invisibleModel(settings.namespace()), "items", ".json"), root);
+    }
+
+    /** tooltip-style ns:name → спрайты textures/gui/sprites/tooltip/name_background.png и name_frame.png. */
+    private void checkTooltipStyles(Definitions defs) {
+        Map<String, Source> styles = new TreeMap<>();
+        for (ItemDef i : defs.items().values()) if (i.tooltipStyle() != null) styles.putIfAbsent(i.tooltipStyle(), i.source());
+        for (var g : defs.guis().values()) {
+            for (var it : g.items()) if (it.tooltipStyle() != null) styles.putIfAbsent(it.tooltipStyle(), it.source());
+        }
+        for (Map.Entry<String, Source> e : styles.entrySet()) {
+            String ns = Ids.namespace(e.getKey()), path = Ids.path(e.getKey());
+            if (ns.equals("minecraft")) continue;
+            for (String part : List.of("_background", "_frame")) {
+                String f = "assets/" + ns + "/textures/gui/sprites/tooltip/" + path + part + ".png";
+                if (!files.containsKey(f)) {
+                    problems.error(e.getValue(), "tooltip-style '" + e.getKey() + "': нет файла pack/" + f
+                            + " (нужны " + path + "_background.png и " + path + "_frame.png, обычно 100×100 с .mcmeta nine_slice)");
+                }
+            }
+        }
+    }
+
+    /**
+     * Подсветка слотов: subtle — еле заметная (сетка меню не видна, но в сундуках понятно, куда наведён курсор),
+     * hidden — нет совсем. Действует на ВСЕ окна у игрока.
+     */
+    private void slotHighlight(Settings.SlotHighlight mode) {
+        String mcmeta = "{\"gui\":{\"scaling\":{\"type\":\"nine_slice\",\"width\":24,\"height\":24,\"border\":4}}}";
+        for (String n : List.of("slot_highlight_back", "slot_highlight_front")) {
+            boolean faint = mode == Settings.SlotHighlight.SUBTLE && n.endsWith("back");
+            String base = "assets/minecraft/textures/gui/sprites/container/" + n + ".png";
+            files.put(base, highlightPng(faint));
+            files.put(base + ".mcmeta", mcmeta.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private static byte[] highlightPng(boolean faint) {
+        try {
+            var img = new java.awt.image.BufferedImage(24, 24, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            if (faint) for (int y = 4; y < 20; y++) for (int x = 4; x < 20; x++) img.setRGB(x, y, 0x22FFFFFF);
+            var out = new ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(img, "png", out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     // ------------------------------------------------------------------ atlas

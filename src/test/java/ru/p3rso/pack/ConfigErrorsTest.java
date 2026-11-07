@@ -166,6 +166,21 @@ class ConfigErrorsTest {
     }
 
     @Test
+    void buttonOutsideClickableAreaRejected() throws Exception {
+        Problems p = load("guis", "b.yml", """
+                m:
+                  rows: 3
+                  buttons:
+                    logo: {x: 0, y: -20, width: 176, height: 15}
+                    low: {x: 7, y: 90, width: 30, height: 30}
+                """);
+        List<String> msgs = p.all().stream().map(Problems.Problem::describe).toList();
+        assertEquals(2, msgs.size(), msgs::toString);
+        assertTrue(msgs.get(0).contains("не накрывает ни одной ячейки"), msgs::toString);
+        assertTrue(msgs.get(1).contains("hide-player-inventory"), msgs::toString);
+    }
+
+    @Test
     void missingTextureReportedByGenerator() throws Exception {
         TestFiles.write(dir, "items/a.yml", "gem:\n  texture: item/nope\n");
         Problems p = new Problems();

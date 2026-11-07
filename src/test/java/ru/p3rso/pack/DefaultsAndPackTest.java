@@ -123,6 +123,12 @@ class DefaultsAndPackTest {
             assertTrue(r.files().containsKey(dir + f + ".png"), f);
         }
         assertTrue(r.files().containsKey("assets/minecraft/shaders/core/gui.vsh"), "шейдер убирает рамку фокуса");
+        for (String w : java.util.List.of("warning_button", "warning_button_highlighted", "warning_button_disabled")) {
+            var img = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(r.files().get("assets/minecraft/textures/gui/sprites/dialog/" + w + ".png")));
+            assertEquals(20, img.getWidth(), "значок ⚠ того же размера, что ванильный");
+            assertEquals(20, img.getHeight());
+            assertEquals(255, img.getRGB(10, 6) >>> 24, "треугольник непрозрачный — значок хорошо виден");
+        }
         String textVsh = new String(r.files().get("assets/minecraft/shaders/core/text.vsh"), StandardCharsets.UTF_8);
         assertTrue(textVsh.contains("const float PANEL_W[MENUS] = float[](320.0);"), "размер панели зашит в шейдер");
         assertTrue(textVsh.contains("#include <minecraft:projection.glsl>"));

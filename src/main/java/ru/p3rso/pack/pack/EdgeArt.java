@@ -40,6 +40,38 @@ public final class EdgeArt {
         return a.img;
     }
 
+    /**
+     * Значок ⚠ диалога (признак окна от сервера) в стиле меню: тёмный фон, золотая рамка, жёлтый треугольник с «!».
+     * Значок остаётся на месте и хорошо заметен — меняется только оформление. state: 0 обычный, 1 наведение, 2 неактивный.
+     */
+    public static BufferedImage warningButton(int state) {
+        EdgeArt a = new EdgeArt(20, 20, 7);
+        boolean hi = state == 1, off = state == 2;
+        int[] top = off ? new int[]{60, 58, 66} : hi ? new int[]{92, 70, 150} : new int[]{58, 44, 98};
+        int[] bot = off ? new int[]{34, 33, 38} : hi ? new int[]{48, 34, 86} : new int[]{26, 19, 46};
+        a.rrect(0, 0, 20, 20, top, bot, 255, 4, 0);
+        a.glow(10, 2, 12, 9, new int[]{255, 255, 255}, hi ? 60 : 30);
+        int[] b1 = off ? new int[]{150, 150, 150} : hi ? new int[]{255, 240, 180} : GOLD_L;
+        int[] b2 = off ? new int[]{80, 80, 80} : GOLD_D;
+        a.border(0, 0, 20, 20, b1, b2, 255, 4);
+        // треугольник
+        int[] y1 = off ? new int[]{170, 170, 170} : new int[]{255, 214, 70}, y2 = off ? new int[]{120, 120, 120} : new int[]{220, 150, 30};
+        for (int y = 4; y <= 15; y++) {
+            double t = (y - 4) / 11.0;
+            int halfW = (int) Math.round(t * 6.0);
+            int[] c = mix(y1, y2, t);
+            for (int x = 10 - halfW - 1; x <= 9 + halfW + 1; x++) a.blend(x, y, 30, 18, 6, 255);     // тёмная обводка
+            for (int x = 10 - halfW; x <= 9 + halfW; x++) a.blend(x, y, c[0], c[1], c[2], 255);
+        }
+        for (int x = 3; x <= 16; x++) a.blend(x, 16, 30, 18, 6, 255);
+        // «!»
+        int[] ex = {40, 24, 8};
+        for (int y = 7; y <= 11; y++) { a.blend(9, y, ex[0], ex[1], ex[2], 255); a.blend(10, y, ex[0], ex[1], ex[2], 255); }
+        a.blend(9, 13, ex[0], ex[1], ex[2], 255);
+        a.blend(10, 13, ex[0], ex[1], ex[2], 255);
+        return a.img;
+    }
+
     public static BufferedImage render(EdgeLayout.Element e, BufferedImage icon) {
         EdgeArt a = new EdgeArt(e.width(), e.height(), e.key().hashCode());
         EdgeLayout.Art art = e.art();

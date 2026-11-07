@@ -12,6 +12,7 @@ import ru.p3rso.pack.model.BlockDef;
 import ru.p3rso.pack.model.Definitions;
 import ru.p3rso.pack.model.FurnitureDef;
 import ru.p3rso.pack.model.GlyphDef;
+import ru.p3rso.pack.model.GuiDef;
 import ru.p3rso.pack.model.Ids;
 import ru.p3rso.pack.model.ItemDef;
 import ru.p3rso.pack.model.ModelSpec;
@@ -74,6 +75,7 @@ public final class PackGenerator {
         generateEdgeArt(defs);
         if (defs.guis().values().stream().anyMatch(g -> g.isEdge() && !g.edge().centered())) writeFocusOutlineShader();
         writeTitlePanelShader(defs);
+        if (defs.guis().values().stream().anyMatch(GuiDef::isEdge)) writeDialogWarningButton();
         Map<String, GlyphDef> glyphs = generateFonts(defs);
         writeInvisibleItem();
         checkTooltipStyles(defs);
@@ -573,6 +575,15 @@ public final class PackGenerator {
                 .replace("%N%", String.valueOf(n)).replace("%PW%", pw).replace("%PH%", ph).replace("%TW%", tw)
                 .replace("%SH%", sh).replace("%ASC%", asc).replace("%TABS%", tabs).replace("%MAX%", max);
         files.put(path, src.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** Значок ⚠ диалога в стиле меню (на том же месте и того же размера, «!» хорошо виден). Свои PNG в pack/ не трогаем. */
+    private void writeDialogWarningButton() {
+        String[] names = {"warning_button", "warning_button_highlighted", "warning_button_disabled"};
+        for (int i = 0; i < names.length; i++) {
+            String path = "assets/minecraft/textures/gui/sprites/dialog/" + names[i] + ".png";
+            if (!userFiles.contains(path)) files.put(path, png(EdgeArt.warningButton(i)));
+        }
     }
 
     private static byte[] png(java.awt.image.BufferedImage img) {

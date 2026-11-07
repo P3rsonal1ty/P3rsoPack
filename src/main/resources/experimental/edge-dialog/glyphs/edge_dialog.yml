@@ -1,0 +1,9 @@
+# ЭКСПЕРИМЕНТ edge-dialog: картинки для меню у края экрана (диалог + кликабельный текст).
+# Кнопка — глиф 120×16, рисуется на двух строках текста (2 × 9 px), ascent 10 центрирует её по первой строке.
+dlg_logo:        {texture: gui/dialog/logo,        height: 26, ascent: 7}
+dlg_btn_home:    {texture: gui/dialog/btn_home,    height: 16, ascent: 10}
+dlg_btn_rpg:     {texture: gui/dialog/btn_rpg,     height: 16, ascent: 10}
+dlg_btn_games:   {texture: gui/dialog/btn_games,   height: 16, ascent: 10}
+dlg_btn_profile: {texture: gui/dialog/btn_profile, height: 16, ascent: 10}
+dlg_btn_shop:    {texture: gui/dialog/btn_shop,    height: 16, ascent: 10}
+dlg_btn_close:   {texture: gui/dialog/btn_close,   height: 16, ascent: 10}

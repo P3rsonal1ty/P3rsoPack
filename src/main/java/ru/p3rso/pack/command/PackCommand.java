@@ -77,6 +77,20 @@ public final class PackCommand {
                         })
                         .executes(ctx -> list(plugin, ctx.getSource().getSender(), StringArgumentType.getString(ctx, "type")))));
 
+        root.then(Commands.literal("edgedialog")
+                .executes(ctx -> {
+                    if (!(ctx.getSource().getExecutor() instanceof Player p)) {
+                        plugin.msg(ctx.getSource().getSender(), "<red>Укажите игроков: /p3rsopack edgedialog <игроки>");
+                        return 0;
+                    }
+                    new ru.p3rso.pack.gui.EdgeDialog(plugin).show(p);
+                    return Command.SINGLE_SUCCESS;
+                })
+                .then(Commands.argument("targets", ArgumentTypes.players()).executes(ctx -> {
+                    for (Player p : players(ctx)) new ru.p3rso.pack.gui.EdgeDialog(plugin).show(p);
+                    return Command.SINGLE_SUCCESS;
+                })));
+
         root.then(Commands.literal("errors").executes(ctx -> {
             CommandSender s = ctx.getSource().getSender();
             List<Problems.Problem> all = plugin.state().problems().all();
